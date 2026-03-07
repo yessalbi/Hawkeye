@@ -3,10 +3,94 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LIVESCOPE — 실시간 도시 뷰어</title>
+<title>CYH VISION — 실시간 도시 뷰어</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhzbmzZFQ4gnzQf1Z7Twpb0OoawWXiqBg",
+    authDomain: "cyh-hawkeye.firebaseapp.com",
+    databaseURL: "https://cyh-hawkeye-default-rtdb.firebaseio.com",
+    projectId: "cyh-hawkeye",
+    storageBucket: "cyh-hawkeye.firebasestorage.app",
+    messagingSenderId: "942927608449",
+    appId: "1:942927608449:web:a7179aa28d8fbc9dc56b80"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+
+  // ── 익명 로그인 ──
+  signInAnonymously(auth).catch(console.error);
+
+  onAuthStateChanged(auth, user => {
+    if (!user) return;
+
+    // ── 즐겨찾기 불러오기 ──
+    const favRef = ref(db, `livescope/favorites/${user.uid}`);
+    onValue(favRef, snap => {
+      const data = snap.val() || {};
+      window._favs = data;
+      renderFavBadges();
+    });
+
+    // ── 마지막 본 지역 복원 ──
+    get(ref(db, `livescope/lastRegion/${user.uid}`)).then(snap => {
+      const region = snap.val();
+      if (region) {
+        const btn = document.querySelector(`.rbtn[data-r="${region}"]`);
+        if (btn) btn.click();
+      }
+    });
+
+    // ── 지역 탭 변경 시 저장 ──
+    document.querySelectorAll('.rbtn').forEach(b => {
+      b.addEventListener('click', () => {
+        set(ref(db, `livescope/lastRegion/${user.uid}`), b.dataset.r);
+      });
+    });
+
+    // ── 즐겨찾기 토글 ──
+    window.toggleFav = function(e, camId, camName) {
+      e.stopPropagation();
+      const favs = window._favs || {};
+      if (favs[camId]) {
+        delete favs[camId];
+      } else {
+        favs[camId] = { name: camName, addedAt: Date.now() };
+      }
+      set(ref(db, `livescope/favorites/${user.uid}`), favs);
+    };
+
+    // ── 마지막 접속 기록 ──
+    set(ref(db, `livescope/lastVisit/${user.uid}`), new Date().toISOString());
+
+    // ── DB 연결 상태 표시 ──
+    const dot = document.getElementById('fb-dot');
+    const lbl = document.getElementById('fb-label');
+    if (dot && lbl) { dot.classList.add('on'); lbl.textContent = 'DB ✓'; }
+  });
+
+  // 즐겨찾기 별 아이콘 렌더링
+  window.renderFavBadges = function() {
+    const favs = window._favs || {};
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+      const id = btn.dataset.camid;
+      btn.textContent = favs[id] ? '★' : '☆';
+      btn.style.color = favs[id] ? '#F6AD55' : '#bbb';
+    });
+  };
+  window._favs = {};
+  window.toggleFav = () => {};
+  window.renderFavBadges = () => {};
+</script>
 <style>
   :root {
     --bg: #F7F6F2;
@@ -108,7 +192,20 @@
   .ytlink:hover { background:rgba(255,255,255,.12); color:#bbb; }
 
   /* CARD FOOT */
-  .cfoot { padding:8px 14px; background:var(--surface2); font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); display:flex; justify-content:space-between; }
+  .cfoot { padding:8px 14px; background:var(--surface2); font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+
+  /* FAV BUTTON */
+  .fav-btn {
+    background:none; border:none; cursor:pointer;
+    font-size:15px; color:#bbb; padding:0 2px; line-height:1;
+    transition:transform .15s, color .15s; flex-shrink:0;
+  }
+  .fav-btn:hover { transform:scale(1.3); color:#F6AD55; }
+
+  /* FIREBASE STATUS */
+  .fb-status { display:inline-flex; align-items:center; gap:5px; font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); }
+  .fb-dot { width:6px; height:6px; border-radius:50%; background:#ccc; transition:background .4s; }
+  .fb-dot.on { background:var(--accent); }
 
   /* INFO BAR */
   .infobar {
@@ -150,8 +247,9 @@
 <body>
 
 <header>
-  <div class="logo"><div class="ldot"></div>LIVESCOPE</div>
+  <div class="logo"><div class="ldot"></div>CYH VISION</div>
   <div class="hdr-r">
+    <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-label">DB</span></div>
     <div class="live-pill">● LIVE</div>
     <div class="clk" id="clk">--:--:--</div>
   </div>
@@ -327,7 +425,7 @@
 
 </main>
 
-<footer>LIVESCOPE &nbsp;·&nbsp; 실시간 도시 CCTV 뷰어 &nbsp;·&nbsp; 미세먼지 · 날씨 · 일조량을 눈으로 직접 확인</footer>
+<footer>CYH VISION &nbsp;·&nbsp; 실시간 도시 CCTV 뷰어 &nbsp;·&nbsp; 미세먼지 · 날씨 · 일조량을 눈으로 직접 확인</footer>
 
 <!-- MODAL -->
 <div class="overlay" id="ov" onclick="if(event.target===this)closeM()">
@@ -384,6 +482,26 @@ function closeM(){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeM();});
+
+// ── Inject fav buttons into all card footers ──
+const CAM_IDS = [
+  'seoul-banpo','seoul-un','seoul-gwanghwamun','seoul-namsan','seoul-lotte',
+  'shibuya-scramble','shibuya-centergai','shibuya-sky',
+  'tokyo-shinjuku','tokyo-asakusa','tokyo-tower',
+  'hokkaido-sapporo','hokkaido-odori','hokkaido-niseko'
+];
+document.querySelectorAll('.cfoot').forEach((foot, i) => {
+  const id = CAM_IDS[i] || 'cam-' + i;
+  const name = foot.closest('.card').querySelector('.cname').textContent;
+  foot.dataset.camid = id;
+  const btn = document.createElement('button');
+  btn.className = 'fav-btn';
+  btn.dataset.camid = id;
+  btn.textContent = '☆';
+  btn.title = '즐겨찾기';
+  btn.onclick = e => { e.stopPropagation(); window.toggleFav(e, id, name); };
+  foot.appendChild(btn);
+});
 
 // Fallback: show fallback overlay if channel embed fails
 // Channel live_stream embeds may silently fail; add click-to-reveal fallback
