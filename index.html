@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIVESCOPE — 실시간 도시 뷰어</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F2F1EB;
+    --text: #1A1A18;
+    --muted: #888880;
+    --accent: #2C6E49;
+    --accent-light: #EBF5F0;
+    --border: #E4E3DC;
+    --live: #E53E3E;
+    --r: 14px;
+    --sh: 0 2px 20px rgba(0,0,0,0.065);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; min-height:100vh; }
+
+  /* HEADER */
+  header {
+    position:sticky; top:0; z-index:100;
+    background:rgba(247,246,242,0.94);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+    padding:0 28px; height:62px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo {
+    font-family:'DM Mono',monospace; font-size:15px; letter-spacing:0.1em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .ldot { width:8px; height:8px; background:var(--live); border-radius:50%; animation:blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+  .hdr-r { display:flex; align-items:center; gap:14px; }
+  .live-pill {
+    display:flex; align-items:center; gap:5px;
+    font-family:'DM Mono',monospace; font-size:10px; letter-spacing:.12em;
+    color:var(--live); background:rgba(229,62,62,.07);
+    border:1px solid rgba(229,62,62,.18); border-radius:100px; padding:4px 10px;
+  }
+  .clk { font-family:'DM Mono',monospace; font-size:12px; color:var(--muted); letter-spacing:.04em; }
+
+  /* NAV */
+  .rnav { padding:18px 28px 0; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+  .rnav::-webkit-scrollbar { display:none; }
+  .rbtn {
+    flex-shrink:0; font-size:13px; padding:8px 18px; border-radius:100px;
+    border:1.5px solid var(--border); background:var(--surface); color:var(--muted);
+    cursor:pointer; transition:all .18s ease; white-space:nowrap;
+    display:flex; align-items:center; gap:6px;
+  }
+  .rbtn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+  .rbtn.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .rcnt { font-family:'DM Mono',monospace; font-size:10px; opacity:.7; }
+
+  /* MAIN */
+  .main { padding:22px 28px 60px; }
+  .rblock { display:none; }
+  .rblock.show { display:block; animation:fadeUp .28s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .bhead { display:flex; align-items:baseline; gap:12px; margin-bottom:18px; padding-top:4px; }
+  .btitle { font-size:17px; font-weight:500; }
+  .bsub { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); }
+
+  /* GRID */
+  .cgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-bottom:36px; }
+  @media(min-width:1440px) { .cgrid { grid-template-columns:repeat(3,1fr); } }
+
+  /* CARD */
+  .card {
+    background:var(--surface); border-radius:var(--r); overflow:hidden;
+    border:1px solid var(--border); box-shadow:var(--sh);
+    transition:box-shadow .2s,transform .2s; cursor:pointer;
+  }
+  .card:hover { box-shadow:0 10px 40px rgba(0,0,0,.11); transform:translateY(-3px); }
+  .ctop { padding:11px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+  .cname { font-size:12.5px; font-weight:500; }
+  .cloc { font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .lstatus { display:flex; align-items:center; gap:5px; font-family:'DM Mono',monospace; font-size:10px; color:var(--live); }
+  .ld2 { width:5px; height:5px; background:var(--live); border-radius:50%; animation:blink 1.5s ease-in-out infinite; }
+
+  /* FRAME */
+  .frame { position:relative; width:100%; padding-bottom:56.25%; background:#0d0d0d; }
+  .frame iframe { position:absolute; inset:0; width:100%; height:100%; border:none; }
+
+  /* FALLBACK */
+  .fb {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px;
+    background:#0d0d0d; opacity:0; pointer-events:none; transition:opacity .3s;
+  }
+  .fb.show { opacity:1; pointer-events:auto; }
+  .fb-icon { font-size:28px; opacity:.35; }
+  .fb-txt { font-family:'DM Mono',monospace; font-size:10px; color:#555; text-align:center; line-height:1.7; }
+  .ytlink {
+    display:inline-flex; align-items:center; gap:6px; font-size:10.5px; color:#777;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+    border-radius:6px; padding:6px 14px; text-decoration:none; transition:all .2s;
+  }
+  .ytlink:hover { background:rgba(255,255,255,.12); color:#bbb; }
+
+  /* CARD FOOT */
+  .cfoot { padding:8px 14px; background:var(--surface2); font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); display:flex; justify-content:space-between; }
+
+  /* INFO BAR */
+  .infobar {
+    background:var(--accent-light); border:1px solid rgba(44,110,73,.15); border-radius:10px;
+    padding:12px 16px; margin-bottom:20px; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px;
+  }
+
+  /* MODAL */
+  .overlay {
+    display:none; position:fixed; inset:0; z-index:300;
+    background:rgba(10,10,10,.84); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .overlay.open { display:flex; }
+  .modal { background:var(--surface); border-radius:16px; width:100%; max-width:940px; overflow:hidden; box-shadow:0 32px 96px rgba(0,0,0,.45); }
+  .mhd { padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .mname { font-size:14px; font-weight:500; }
+  .mclose { width:30px; height:30px; border-radius:50%; background:var(--surface2); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--muted); transition:background .15s; }
+  .mclose:hover { background:var(--border); }
+  .mframe { position:relative; padding-bottom:56.25%; background:#000; }
+  .mframe iframe { position:absolute; inset:0; width:100%; height:100%; border:none; }
+  .mfoot { padding:10px 18px; background:var(--surface2); font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); display:flex; justify-content:space-between; }
+  .mfoot a { color:var(--muted); text-decoration:none; }
+  .mfoot a:hover { color:var(--accent); }
+
+  /* FOOTER */
+  footer { text-align:center; padding:24px; font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; border-top:1px solid var(--border); letter-spacing:.04em; }
+
+  /* RESPONSIVE */
+  @media(max-width:640px) {
+    header { padding:0 16px; }
+    .rnav { padding:14px 16px 0; }
+    .main { padding:16px 16px 60px; }
+    .cgrid { grid-template-columns:1fr; }
+    .btitle { font-size:15px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="ldot"></div>LIVESCOPE</div>
+  <div class="hdr-r">
+    <div class="live-pill">● LIVE</div>
+    <div class="clk" id="clk">--:--:--</div>
+  </div>
+</header>
+
+<nav class="rnav">
+  <button class="rbtn on" data-r="all">🌏 전체 <span class="rcnt">14</span></button>
+  <button class="rbtn" data-r="seoul">🇰🇷 서울 <span class="rcnt">5</span></button>
+  <button class="rbtn" data-r="shibuya">🗼 시부야 <span class="rcnt">3</span></button>
+  <button class="rbtn" data-r="tokyo">🏙️ 도쿄 <span class="rcnt">3</span></button>
+  <button class="rbtn" data-r="hokkaido">⛄ 홋카이도 <span class="rcnt">3</span></button>
+</nav>
+
+<main class="main">
+  <div class="infobar">
+    💡 카드 클릭 시 확대 뷰어로 열립니다 &nbsp;·&nbsp; 일부 채널은 외부 embed를 제한하므로 <strong>YouTube에서 열기</strong> 링크를 이용해 주세요
+  </div>
+
+  <!-- SEOUL -->
+  <div class="rblock show" id="b-seoul">
+    <div class="bhead"><span class="btitle">🇰🇷 서울</span><span class="bsub">Seoul, South Korea</span></div>
+    <div class="cgrid">
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCQKQTgZJo3PlxA-9V1Z51XA','반포대교 · 한강','서울 서초구 · 반포한강공원','https://www.youtube.com/@dailyseoullivecam')">
+        <div class="ctop"><div><div class="cname">반포대교 · 한강</div><div class="cloc">서울 서초구 · 반포한강공원</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCQKQTgZJo3PlxA-9V1Z51XA&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한된 채널입니다<br>YouTube에서 직접 확인해 주세요</div><a class="ytlink" href="https://www.youtube.com/@dailyseoullivecam" target="_blank">↗ YouTube에서 열기</a></div>
+        </div>
+        <div class="cfoot"><span>데일리서울 한강 라이브캠 · 4K</span><span>반포대교 · 세빛섬 · 잠수교</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCHPHjGPgTUl_UVEmq5MCWKQ','유엔빌리지 · 한강','서울 용산구 · 한남동','https://www.youtube.com/@UNvillage_live')">
+        <div class="ctop"><div><div class="cname">유엔빌리지 · 한강</div><div class="cloc">서울 용산구 · 한남동</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCHPHjGPgTUl_UVEmq5MCWKQ&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한된 채널입니다</div><a class="ytlink" href="https://www.youtube.com/@UNvillage_live" target="_blank">↗ YouTube에서 열기</a></div>
+        </div>
+        <div class="cfoot"><span>UN Village Seoul Live · Lofi BGM</span><span>동호대교 · 강변북로 뷰</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UC9gEPgQZzTpNPD8dF4FBHVA','광화문 · 도심','서울 종로구 · 광화문광장','https://www.youtube.com/results?search_query=광화문+실시간+라이브캠')">
+        <div class="ctop"><div><div class="cname">광화문 · 도심</div><div class="cloc">서울 종로구 · 광화문광장</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UC9gEPgQZzTpNPD8dF4FBHVA&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=광화문+실시간+라이브캠" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>서울 도심 라이브</span><span>광화문 · 경복궁 · 세종대로</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCe6SLjpHzGFioaGp-GJJ-oA','남산 N서울타워','서울 중구 · 남산','https://www.youtube.com/results?search_query=남산타워+실시간+라이브')">
+        <div class="ctop"><div><div class="cname">남산 N서울타워</div><div class="cloc">서울 중구 · 남산</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCe6SLjpHzGFioaGp-GJJ-oA&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=남산타워+실시간+라이브" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>N Seoul Tower 파노라마</span><span>서울 스카이라인 · 미세먼지 확인</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCOHLhm14Z3x0c9qGRoLY1qQ','롯데타워 · 잠실','서울 송파구 · 잠실동','https://www.youtube.com/results?search_query=롯데타워+잠실+라이브캠')">
+        <div class="ctop"><div><div class="cname">롯데타워 · 잠실</div><div class="cloc">서울 송파구 · 잠실동</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCOHLhm14Z3x0c9qGRoLY1qQ&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=롯데타워+잠실+라이브캠" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>Lotte World Tower · 555m</span><span>석촌호수 · 잠실대교 뷰</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SHIBUYA -->
+  <div class="rblock show" id="b-shibuya">
+    <div class="bhead"><span class="btitle">🗼 시부야</span><span class="bsub">Shibuya, Tokyo · Japan</span></div>
+    <div class="cgrid">
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/8H3nRCFVR6Y','시부야 스크램블 크로싱','도쿄 시부야구 · 道玄坂','https://www.youtube.com/watch?v=8H3nRCFVR6Y')">
+        <div class="ctop"><div><div class="cname">시부야 스크램블 크로싱</div><div class="cloc">도쿄 시부야구 · 道玄坂</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/8H3nRCFVR6Y?autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        </div>
+        <div class="cfoot"><span>세계 최다 보행자 교차로 · Scramble</span><span>혼잡도 · 날씨 실시간 확인</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCPPZfJhCBFMv4bVnq6Nl2sg','시부야 센터가이','도쿄 시부야구 · 宇田川町','https://www.youtube.com/results?search_query=shibuya+center+gai+live+cam')">
+        <div class="ctop"><div><div class="cname">시부야 센터가이</div><div class="cloc">도쿄 시부야구 · 宇田川町</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCPPZfJhCBFMv4bVnq6Nl2sg&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=shibuya+center+street+live" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>Center-Gai · 패션 · 청년 문화</span><span>Shibuya 109 · 쇼핑 중심지</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UC27AeIaFaGDPq1F1zFPK-PQ','시부야 스카이 · 전망대','도쿄 시부야구 · 渋谷2丁目','https://www.youtube.com/results?search_query=shibuya+sky+live')">
+        <div class="ctop"><div><div class="cname">시부야 스카이 · 전망대</div><div class="cloc">도쿄 시부야구 · 渋谷スクランブルスクエア</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UC27AeIaFaGDPq1F1zFPK-PQ&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=shibuya+sky+tokyo+live" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>Shibuya Sky · 230m 옥상 전망대</span><span>도쿄 스카이라인 · 야경 명소</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOKYO -->
+  <div class="rblock show" id="b-tokyo">
+    <div class="bhead"><span class="btitle">🏙️ 도쿄</span><span class="bsub">Tokyo, Japan</span></div>
+    <div class="cgrid">
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/6dp-bvQ7RWo','신주쿠 가부키초','도쿄 신주쿠구 · 歌舞伎町','https://www.youtube.com/watch?v=6dp-bvQ7RWo')">
+        <div class="ctop"><div><div class="cname">신주쿠 가부키초</div><div class="cloc">도쿄 신주쿠구 · 歌舞伎町</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/6dp-bvQ7RWo?autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        </div>
+        <div class="cfoot"><span>Tokyo Shinjuku · 가부키초 네온</span><span>엔터테인먼트 · 혼잡도 확인</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCJxIEhKHAgZmKWMBHRzE4lQ','아사쿠사 · 센소지','도쿄 다이토구 · 浅草','https://www.youtube.com/results?search_query=asakusa+sensoji+live+cam+tokyo')">
+        <div class="ctop"><div><div class="cname">아사쿠사 · 센소지</div><div class="cloc">도쿄 다이토구 · 浅草</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCJxIEhKHAgZmKWMBHRzE4lQ&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=asakusa+live+cam" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>浅草寺 · 도쿄 최고령 사찰</span><span>가미나리몬 · 나카미세 상점가</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCasv4M7FOuP5C3j7wJkHHXg','도쿄 타워 · 미나토','도쿄 미나토구 · 芝公園','https://www.youtube.com/results?search_query=tokyo+tower+live+stream+24hours')">
+        <div class="ctop"><div><div class="cname">도쿄 타워 · 미나토</div><div class="cloc">도쿄 미나토구 · 芝公園</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCasv4M7FOuP5C3j7wJkHHXg&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=tokyo+tower+live+stream" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>Tokyo Tower · 333m 랜드마크</span><span>미나토 스카이라인 · 일조량 확인</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- HOKKAIDO -->
+  <div class="rblock show" id="b-hokkaido">
+    <div class="bhead"><span class="btitle">⛄ 홋카이도</span><span class="bsub">Hokkaido, Japan</span></div>
+    <div class="cgrid">
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/O7aL3u5n1gQ','삿포로역 · JR','홋카이도 삿포로시 · 北区','https://www.youtube.com/watch?v=O7aL3u5n1gQ')">
+        <div class="ctop"><div><div class="cname">삿포로역 · JR</div><div class="cloc">홋카이도 삿포로시 · 北区</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/O7aL3u5n1gQ?autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        </div>
+        <div class="cfoot"><span>JR 삿포로역 · 홋카이도 관문</span><span>적설량 · 날씨 실시간 확인</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCOcpTrwSmFWFqMVg5cSwfPQ','오도리 공원 · TV탑','홋카이도 삿포로시 · 大通','https://www.youtube.com/results?search_query=sapporo+odori+park+live+cam')">
+        <div class="ctop"><div><div class="cname">오도리 공원 · TV탑</div><div class="cloc">홋카이도 삿포로시 · 大通</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCOcpTrwSmFWFqMVg5cSwfPQ&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=sapporo+odori+live" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>삿포로 오도리 공원 · 1.5km</span><span>눈 축제 · 사계절 이벤트 명소</span></div>
+      </div>
+
+      <div class="card" onclick="openM('https://www.youtube.com/embed/live_stream?channel=UCITFnz7yFSSSmhRpqKMnGNA','니세코 스키 리조트','홋카이도 니세코 · 磯谷郡','https://www.youtube.com/results?search_query=niseko+hokkaido+snow+live')">
+        <div class="ctop"><div><div class="cname">니세코 스키 리조트</div><div class="cloc">홋카이도 니세코 · 磯谷郡</div></div><div class="lstatus"><div class="ld2"></div>LIVE</div></div>
+        <div class="frame">
+          <iframe src="https://www.youtube.com/embed/live_stream?channel=UCITFnz7yFSSSmhRpqKMnGNA&autoplay=1&mute=1&rel=0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+          <div class="fb"><div class="fb-icon">📡</div><div class="fb-txt">외부 재생이 제한될 수 있습니다</div><a class="ytlink" href="https://www.youtube.com/results?search_query=niseko+snow+live+cam" target="_blank">↗ YouTube 검색</a></div>
+        </div>
+        <div class="cfoot"><span>Niseko Hanazono Resort</span><span>파우더 스노우 · 설경 직접 확인</span></div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<footer>LIVESCOPE &nbsp;·&nbsp; 실시간 도시 CCTV 뷰어 &nbsp;·&nbsp; 미세먼지 · 날씨 · 일조량을 눈으로 직접 확인</footer>
+
+<!-- MODAL -->
+<div class="overlay" id="ov" onclick="if(event.target===this)closeM()">
+  <div class="modal">
+    <div class="mhd">
+      <span class="mname" id="mn">—</span>
+      <button class="mclose" onclick="closeM()">✕</button>
+    </div>
+    <div class="mframe">
+      <iframe id="mif" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    </div>
+    <div class="mfoot">
+      <span id="ml">—</span>
+      <a id="myl" href="#" target="_blank">↗ YouTube에서 열기</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// Clock
+function tick(){
+  const d=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+  const p=n=>String(n).padStart(2,'0');
+  document.getElementById('clk').textContent=`KST ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+tick(); setInterval(tick,1000);
+
+// Tabs
+document.querySelectorAll('.rbtn').forEach(b=>{
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('on'));
+    this.classList.add('on');
+    const r=this.dataset.r;
+    ['seoul','shibuya','tokyo','hokkaido'].forEach(id=>{
+      const el=document.getElementById('b-'+id);
+      (r==='all'||r===id)?el.classList.add('show'):el.classList.remove('show');
+    });
+  });
+});
+
+// Modal
+function openM(src,name,loc,yt){
+  const sep=src.includes('?')?'&':'?';
+  document.getElementById('mif').src=src+sep+'autoplay=1&mute=0&rel=0';
+  document.getElementById('mn').textContent=name+'  ·  '+loc;
+  document.getElementById('ml').textContent=loc;
+  document.getElementById('myl').href=yt||'#';
+  document.getElementById('ov').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeM(){
+  document.getElementById('ov').classList.remove('open');
+  setTimeout(()=>document.getElementById('mif').src='',200);
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeM();});
+
+// Fallback: show fallback overlay if channel embed fails
+// Channel live_stream embeds may silently fail; add click-to-reveal fallback
+document.querySelectorAll('.card').forEach(card=>{
+  const iframe=card.querySelector('.frame iframe');
+  const fb=card.querySelector('.fb');
+  if(!iframe||!fb)return;
+  // Show fallback if src contains 'channel=' (channel-based embed, less reliable)
+  const src=iframe.src||'';
+  if(src.includes('channel=') && !src.includes('/embed/[A-Za-z0-9]')) {
+    setTimeout(()=>{
+      // Try to detect if iframe is showing YouTube error state
+      // Since cross-origin, we can't read content — just leave fallback hidden
+      // Users can manually click the card to open modal, which also has YouTube link
+    },5000);
+  }
+});
+</script>
+</body>
+</html>
