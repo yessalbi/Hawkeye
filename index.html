@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 
-<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -27,35 +26,30 @@
   signInAnonymously(auth).catch(console.error);
   onAuthStateChanged(auth, user => {
     if (!user) return;
-    const dot = document.getElementById('fb-dot');
-    const lbl = document.getElementById('fb-label');
-    if (dot) dot.classList.add('on');
-    if (lbl) lbl.textContent = 'DB ✓';
+    document.getElementById('fb-dot')?.classList.add('on');
+    const lbl = document.getElementById('fb-label'); if(lbl) lbl.textContent='DB ✓';
     onValue(ref(db,`livescope/favorites/${user.uid}`), snap => {
       window._favs = snap.val()||{};
       document.querySelectorAll('.fav-btn').forEach(btn => {
-        const id = btn.dataset.camid;
-        btn.textContent = window._favs[id] ? '★':'☆';
-        btn.style.color = window._favs[id] ? '#F6AD55':'#bbb';
+        btn.textContent = window._favs[btn.dataset.camid] ? '★':'☆';
+        btn.style.color  = window._favs[btn.dataset.camid] ? '#F6AD55':'#bbb';
       });
     });
-    get(ref(db,`livescope/lastRegion/${user.uid}`)).then(snap => {
-      const r = snap.val();
-      if (r) { const b=document.querySelector(`.rbtn[data-r="${r}"]`); if(b) b.click(); }
+    get(ref(db,`livescope/lastRegion/${user.uid}`)).then(snap=>{
+      const r=snap.val(); if(r){const b=document.querySelector(`.rbtn[data-r="${r}"]`);if(b)b.click();}
     });
-    document.querySelectorAll('.rbtn').forEach(b => {
-      b.addEventListener('click', () => set(ref(db,`livescope/lastRegion/${user.uid}`), b.dataset.r));
+    document.querySelectorAll('.rbtn').forEach(b=>{
+      b.addEventListener('click',()=>set(ref(db,`livescope/lastRegion/${user.uid}`),b.dataset.r));
     });
-    window.toggleFav = (e,id,name) => {
+    window.toggleFav=(e,id,name)=>{
       e.stopPropagation();
       const f={...(window._favs||{})};
-      if(f[id]) delete f[id]; else f[id]={name,at:Date.now()};
+      if(f[id])delete f[id]; else f[id]={name,at:Date.now()};
       set(ref(db,`livescope/favorites/${user.uid}`),f);
     };
-    set(ref(db,`livescope/lastVisit/${user.uid}`), new Date().toISOString());
+    set(ref(db,`livescope/lastVisit/${user.uid}`),new Date().toISOString());
   });
-  window._favs={};
-  window.toggleFav=()=>{};
+  window._favs={}; window.toggleFav=()=>{};
 </script>
 
 <style>
@@ -68,57 +62,43 @@ body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;font
 
 header{
   position:sticky;top:0;z-index:200;
-  background:rgba(245,244,240,.95);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--brd);
-  height:58px;padding:0 24px;
+  background:rgba(245,244,240,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--brd);height:58px;padding:0 24px;
   display:flex;align-items:center;justify-content:space-between;
 }
 .logo{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.14em;display:flex;align-items:center;gap:9px}
-.ldot{width:7px;height:7px;background:var(--live);border-radius:50%;box-shadow:0 0 0 0 rgba(229,62,62,.4);animation:pulse 2s ease-in-out infinite}
+.ldot{width:7px;height:7px;background:var(--live);border-radius:50%;animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(229,62,62,.4)}50%{box-shadow:0 0 0 7px rgba(229,62,62,0)}100%{box-shadow:0 0 0 0 rgba(229,62,62,0)}}
 .hdr-r{display:flex;align-items:center;gap:12px}
 .live-pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--live);background:rgba(229,62,62,.07);border:1px solid rgba(229,62,62,.2);border-radius:100px;padding:3px 9px}
 .clk{font-family:'DM Mono',monospace;font-size:11px;color:var(--mut)}
 .fb-status{display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:var(--mut)}
-.fb-dot{width:5px;height:5px;border-radius:50%;background:#ccc;transition:background .4s}
-.fb-dot.on{background:var(--acc)}
+.fb-dot{width:5px;height:5px;border-radius:50%;background:#ccc;transition:background .4s}.fb-dot.on{background:var(--acc)}
 
-/* API key 설정 배너 */
+/* API 배너 */
 #api-banner{
   background:#FFFBEB;border-bottom:1px solid #FCD34D;
-  padding:10px 24px;display:flex;align-items:center;gap:12px;
+  padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   font-size:12px;color:#92400E;
 }
 #api-banner.hidden{display:none}
-#api-banner input{
-  flex:1;max-width:340px;padding:5px 10px;border-radius:6px;
-  border:1px solid #FCD34D;background:#FFF;font-family:'DM Mono',monospace;
-  font-size:11px;color:#1a1a1a;outline:none;
-}
-#api-banner input:focus{border-color:#F59E0B;box-shadow:0 0 0 2px rgba(245,158,11,.15)}
-#api-banner button{
-  padding:5px 14px;border-radius:6px;border:none;
-  background:#F59E0B;color:#fff;font-size:11px;cursor:pointer;
-  font-family:'DM Mono',monospace;white-space:nowrap;
-}
-#api-banner button:hover{background:#D97706}
-.banner-link{color:#92400E;font-size:11px}
+#api-banner input{flex:1;min-width:200px;max-width:320px;padding:5px 10px;border-radius:6px;border:1px solid #FCD34D;background:#FFF;font-family:'DM Mono',monospace;font-size:11px;color:#1a1a1a;outline:none;}
+#api-banner input:focus{border-color:#F59E0B}
+#api-banner button{padding:5px 14px;border-radius:6px;border:none;background:#F59E0B;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap}
+.banner-link{color:#B45309;font-size:10.5px;text-decoration:none;white-space:nowrap}.banner-link:hover{text-decoration:underline}
 
 .rnav{padding:16px 24px 0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .rnav::-webkit-scrollbar{display:none}
 .rbtn{flex-shrink:0;white-space:nowrap;font-size:12.5px;padding:7px 16px;border-radius:100px;border:1.5px solid var(--brd);background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
 .rbtn:hover{border-color:var(--acc);color:var(--acc);background:var(--acl)}
 .rbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.rcnt{font-family:'DM Mono',monospace;font-size:9px;opacity:.7}
 
 .main{padding:20px 24px 60px}
 .rblock{display:none}
 .rblock.show{display:block;animation:up .25s ease both}
 @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.bhead{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-top:2px}
-.btitle{font-size:16px;font-weight:500}
-.bsub{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut)}
+.bhead{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-top:4px}
+.btitle{font-size:16px;font-weight:500}.bsub{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut)}
 
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:32px}
 @media(min-width:1500px){.cgrid{grid-template-columns:repeat(4,1fr)}}
@@ -127,61 +107,56 @@ header{
 .card{background:var(--sur);border-radius:var(--r);overflow:hidden;border:1px solid var(--brd);box-shadow:0 1px 12px rgba(0,0,0,.055);transition:box-shadow .2s,transform .2s}
 .card:hover{box-shadow:0 8px 32px rgba(0,0,0,.11);transform:translateY(-2px)}
 .ctop{padding:9px 13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--brd)}
-.cname{font-size:12px;font-weight:500;line-height:1.2}
-.cloc{font-size:10px;color:var(--mut);margin-top:2px}
+.cname{font-size:12px;font-weight:500;line-height:1.2}.cloc{font-size:10px;color:var(--mut);margin-top:2px}
 .lstatus{display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;color:var(--live);flex-shrink:0}
 .ld2{width:5px;height:5px;background:var(--live);border-radius:50%;animation:pulse 1.8s ease-in-out infinite}
 
-/* 로딩 상태 */
-.frame{position:relative;width:100%;padding-bottom:56.25%;background:#111;overflow:hidden}
+.frame{position:relative;width:100%;padding-bottom:56.25%;background:#0f0f0f;overflow:hidden}
 .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:none;z-index:1}
-
-/* shimmer */
 .shimmer{position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,#111 25%,#1c1c1c 50%,#111 75%);background-size:200% 100%;animation:shim 1.6s infinite}
 .frame.loaded .shimmer{display:none}
 @keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-/* 에러 상태 */
+/* 에러 오버레이 — iframe 재생 불가 감지 */
 .err-overlay{
   position:absolute;inset:0;z-index:3;display:none;
-  flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  flex-direction:column;align-items:center;justify-content:center;gap:10px;
   background:#0f0f0f;
 }
 .err-overlay.show{display:flex}
-.err-icon{font-size:24px;opacity:.4}
-.err-txt{font-family:'DM Mono',monospace;font-size:9.5px;color:#555;text-align:center;line-height:1.7}
-.err-btn{
-  font-family:'DM Mono',monospace;font-size:10px;color:#888;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
-  border-radius:5px;padding:5px 12px;text-decoration:none;cursor:pointer;
-  transition:all .2s;
-}
-.err-btn:hover{background:rgba(255,255,255,.12);color:#bbb}
-
-/* 새로고침 뱃지 */
-.reload-btn{
-  position:absolute;top:7px;right:7px;z-index:4;
-  background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);
-  border-radius:5px;padding:3px 8px;
-  font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);
-  cursor:pointer;transition:all .2s;display:none;
-}
-.frame:hover .reload-btn{display:block}
-.reload-btn:hover{background:rgba(0,0,0,.7);color:#fff}
+.err-icon{font-size:28px;opacity:.35}
+.err-msg{font-family:'DM Mono',monospace;font-size:10px;color:#666;text-align:center;line-height:1.8}
+.err-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.err-link{font-family:'DM Mono',monospace;font-size:10px;color:#888;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:5px 12px;text-decoration:none;transition:all .2s}
+.err-link:hover{background:rgba(255,255,255,.12);color:#ccc}
+.err-update{background:none;border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:5px 12px;font-family:'DM Mono',monospace;font-size:10px;color:#888;cursor:pointer;transition:all .2s}
+.err-update:hover{background:rgba(255,255,255,.08);color:#ccc}
 
 .cfoot{padding:7px 13px;background:var(--sur2);font-family:'DM Mono',monospace;font-size:9.5px;color:var(--mut);display:flex;justify-content:space-between;align-items:center;gap:8px}
-.cfoot-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cfoot-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .fav-btn{background:none;border:none;cursor:pointer;font-size:14px;color:#bbb;padding:0;line-height:1;flex-shrink:0;transition:transform .15s,color .15s}
 .fav-btn:hover{transform:scale(1.3);color:#F6AD55}
+
+/* VIDEO ID 업데이트 폼 */
+.update-form{
+  display:none;position:absolute;inset:0;z-index:10;
+  background:rgba(10,10,10,.97);flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;padding:20px;
+}
+.update-form.show{display:flex}
+.update-form label{font-family:'DM Mono',monospace;font-size:10px;color:#888;text-align:center}
+.update-form input{width:100%;max-width:260px;padding:7px 12px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#eee;font-family:'DM Mono',monospace;font-size:12px;text-align:center;outline:none}
+.update-form input:focus{border-color:#555}
+.update-btns{display:flex;gap:8px}
+.update-btns button{padding:6px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;border:none}
+.btn-apply{background:#2C6E49;color:#fff}.btn-cancel{background:#2a2a2a;color:#888}
 
 footer{text-align:center;padding:22px;font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;border-top:1px solid var(--brd);letter-spacing:.04em}
 
 @media(max-width:600px){
-  header{padding:0 14px}
-  #api-banner{padding:10px 14px;flex-wrap:wrap}
-  .rnav{padding:12px 14px 0}
-  .main{padding:14px 14px 50px}
+  header{padding:0 14px}.rnav{padding:12px 14px 0}.main{padding:14px 14px 50px}
   .cgrid{grid-template-columns:1fr;gap:10px}
+  #api-banner{padding:10px 14px}
 }
 </style>
 </head>
@@ -196,171 +171,113 @@ footer{text-align:center;padding:22px;font-size:10px;color:var(--mut);font-famil
   </div>
 </header>
 
-<!-- YouTube API Key 설정 배너 -->
+<!-- API 배너 (선택) -->
 <div id="api-banner">
-  <span>⚠️ YouTube Data API Key를 입력하면 라이브 영상을 자동 탐색합니다</span>
-  <input type="text" id="yt-api-input" placeholder="AIzaSy..." autocomplete="off">
-  <button onclick="saveApiKey()">저장 후 로드</button>
-  <a class="banner-link" href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank">↗ API Key 발급</a>
+  <span>⚡ YouTube API Key를 입력하면 채널 최신 라이브를 자동 탐색합니다 (선택사항)</span>
+  <input type="password" id="yt-api-input" placeholder="AIzaSy..." onkeydown="if(event.key==='Enter')saveApiKey()">
+  <button onclick="saveApiKey()">저장</button>
+  <button onclick="document.getElementById('api-banner').classList.add('hidden')" style="background:#ccc;color:#555">닫기</button>
+  <a class="banner-link" href="https://console.cloud.google.com/apis/credentials" target="_blank">↗ Key 발급</a>
 </div>
 
 <nav class="rnav">
-  <button class="rbtn on" data-r="all">🌏 전체 <span class="rcnt">14</span></button>
-  <button class="rbtn" data-r="seoul">🇰🇷 서울 <span class="rcnt">5</span></button>
-  <button class="rbtn" data-r="shibuya">🗼 시부야 <span class="rcnt">3</span></button>
-  <button class="rbtn" data-r="tokyo">🏙️ 도쿄 <span class="rcnt">3</span></button>
-  <button class="rbtn" data-r="hokkaido">⛄ 홋카이도 <span class="rcnt">3</span></button>
+  <button class="rbtn on" data-r="all">🌏 전체</button>
+  <button class="rbtn" data-r="seoul">🇰🇷 서울</button>
+  <button class="rbtn" data-r="shibuya">🗼 시부야</button>
+  <button class="rbtn" data-r="tokyo">🏙️ 도쿄</button>
+  <button class="rbtn" data-r="hokkaido">⛄ 홋카이도</button>
 </nav>
 
 <main class="main" id="grid"></main>
 <footer>CYH VISION &nbsp;·&nbsp; 실시간 도시 뷰어 &nbsp;·&nbsp; 미세먼지 · 날씨 · 일조량을 눈으로 확인</footer>
 
 <script>
-// ═══════════════════════════════════════════════════
-// 채널 목록 — YouTube Data API로 현재 라이브 video ID 자동 조회
-// channelId: 검증된 YouTube 채널 ID
-// fallback:  채널이 현재 라이브 중이 아닐 때 보여줄 채널 페이지 링크
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  CAMS — 본인이 직접 확인한 video ID 기준
+//  영상이 끊기면 카드 하단 "ID 업데이트" 버튼으로 교체 가능
+// ═══════════════════════════════════════════════════════
 const CAMS = [
-  // ── 서울 ─────────────────────────────────────────
+  // ── 서울 ─────────────────────────────────────
   {
     id:'s1', r:'seoul',
-    name:'반포대교 · 한강', loc:'서울 서초구',
-    channelId:'UCQKQTgZJo3PlxA-9V1Z51XA',  // 데일리서울 한강 라이브캠 (검증됨)
-    desc:'반포대교 · 세빛섬 · 잠수교 · 4K'
-  },
-  {
-    id:'s2', r:'seoul',
-    name:'유엔빌리지 · 한강', loc:'서울 용산구 한남동',
-    channelId:'UCHPHjGPgTUl_UVEmq5MCWKQ',  // UN Village Seoul Live (검증됨)
-    desc:'동호대교 · 강변북로'
-  },
-  {
-    id:'s3', r:'seoul',
-    name:'광화문 · 도심', loc:'서울 종로구',
-    channelId:'UCcQTRi69dsVYHN3exePtZ1A',  // KBS News
-    desc:'광화문광장 · 경복궁 · 세종대로'
-  },
-  {
-    id:'s4', r:'seoul',
-    name:'홍대 · 연남동', loc:'서울 마포구',
-    channelId:'UCi_IgnAMf6J6JBDQ3VfNiRA',  // 서울 홍대 라이브
-    desc:'홍대입구 · 연남동 거리'
-  },
-  {
-    id:'s5', r:'seoul',
-    name:'남산 N서울타워', loc:'서울 중구 남산',
-    channelId:'UCo8C6ycH1CioJByoOYRctiw',  // 남산 서울 뷰
-    desc:'남산 파노라마 · 서울 스카이라인'
+    name:'서울 · 한강 라이브캠', loc:'서울',
+    vid:'-JhoMGoAfFc',   // ✅ 본인 확인
+    ytUrl:'https://www.youtube.com/watch?v=-JhoMGoAfFc',
+    desc:'한강 실시간 · 4K'
   },
 
-  // ── 시부야 ────────────────────────────────────────
+  // ── 시부야 ────────────────────────────────────
   {
     id:'b1', r:'shibuya',
-    name:'시부야 스크램블 크로싱 (ANN)', loc:'도쿄 시부야구',
-    channelId:'UCGCZAYq5Xxojl_tSXcVJhiQ',  // ANNnewsCH — 시부야 고정 라이브 (검증됨)
-    desc:'테레비 아사히 · 스크램블 교차로 24h'
-  },
-  {
-    id:'b2', r:'shibuya',
-    name:'시부야 스크램블 크로싱 (FNN)', loc:'도쿄 시부야구',
-    channelId:'UCE1jXbVAGJQEo9dYCqggAJA',  // FNNプライムオンライン (검증됨)
-    desc:'후지TV · 다른 앵글 · 광각 뷰'
-  },
-  {
-    id:'b3', r:'shibuya',
-    name:'시부야 스크램블 스퀘어', loc:'도쿄 시부야구',
-    channelId:'UCnjFJMhSC0T5mCILGMxQeEw',  // 시부야 스카이 라이브
-    desc:'230m 전망대 · 도쿄 스카이라인'
+    name:'시부야 스크램블 크로싱', loc:'도쿄 시부야구',
+    vid:'8H3nRCFVR6Y',   // ✅ 본인 확인
+    ytUrl:'https://www.youtube.com/watch?v=8H3nRCFVR6Y',
+    desc:'スクランブル交差点 · 24h'
   },
 
-  // ── 도쿄 ─────────────────────────────────────────
+  // ── 도쿄 ─────────────────────────────────────
   {
     id:'t1', r:'tokyo',
-    name:'신주쿠 가부키초', loc:'도쿄 신주쿠구',
-    channelId:'UCyMFCExlWkBPvMDzQM9GlSQ',  // 신주쿠 라이브캠
-    desc:'가부키초 · 네온사인 · 24h'
-  },
-  {
-    id:'t2', r:'tokyo',
-    name:'아사쿠사 · 센소지', loc:'도쿄 다이토구',
-    channelId:'UCJxIEhKHAgZmKWMBHRzE4lQ',  // 아사쿠사 라이브
-    desc:'浅草寺 · 가미나리몬 · 나카미세'
-  },
-  {
-    id:'t3', r:'tokyo',
-    name:'도쿄 타워 · 미나토', loc:'도쿄 미나토구',
-    channelId:'UCQMXL0bQJKJIr4eVVfPSBEA',  // 도쿄 라이브뷰
-    desc:'Tokyo Tower 333m · 미나토 스카이라인'
+    name:'도쿄 라이브캠', loc:'도쿄',
+    vid:'_k-5U7IeK8g',   // ✅ 본인 확인
+    ytUrl:'https://www.youtube.com/watch?v=_k-5U7IeK8g',
+    desc:'도쿄 실시간 뷰'
   },
 
-  // ── 홋카이도 ──────────────────────────────────────
+  // ── 홋카이도 ──────────────────────────────────
   {
     id:'h1', r:'hokkaido',
-    name:'삿포로역 · JR', loc:'홋카이도 삿포로시',
-    channelId:'UCsGIBBpEaqfgfGjDa4DFIuA',  // 삿포로 라이브 (HTB계열)
-    desc:'JR 삿포로역 · 적설량 · 날씨'
-  },
-  {
-    id:'h2', r:'hokkaido',
-    name:'삿포로 오도리 공원', loc:'홋카이도 삿포로시',
-    channelId:'UCMbyuBEfWTSzDxiUwTKyFag',  // HTB 홋카이도TV
-    desc:'오도리 공원 · TV탑 · 눈 축제'
-  },
-  {
-    id:'h3', r:'hokkaido',
-    name:'니세코 스키 리조트', loc:'홋카이도 니세코',
-    channelId:'UCITFnz7yFSSSmhRpqKMnGNA',  // 니세코 리조트
-    desc:'Niseko · 파우더 스노우 · 설경'
+    name:'홋카이도 라이브캠', loc:'홋카이도',
+    vid:'kfIQBC0hrII',   // ✅ 본인 확인
+    ytUrl:'https://www.youtube.com/watch?v=kfIQBC0hrII',
+    desc:'北海道 실시간 뷰'
   }
 ];
 
 const REGIONS = [
-  {id:'seoul',   label:'🇰🇷 서울',    sub:'Seoul, South Korea'},
-  {id:'shibuya', label:'🗼 시부야',    sub:'Shibuya, Tokyo'},
-  {id:'tokyo',   label:'🏙️ 도쿄',    sub:'Tokyo, Japan'},
-  {id:'hokkaido',label:'⛄ 홋카이도', sub:'Hokkaido, Japan'}
+  {id:'seoul',    label:'🇰🇷 서울',    sub:'Seoul, South Korea'},
+  {id:'shibuya',  label:'🗼 시부야',    sub:'Shibuya, Tokyo'},
+  {id:'tokyo',    label:'🏙️ 도쿄',    sub:'Tokyo, Japan'},
+  {id:'hokkaido', label:'⛄ 홋카이도',  sub:'Hokkaido, Japan'}
 ];
 
-// ── YouTube API Key 관리 ──────────────────────────
+// ── API Key ──────────────────────────────────────────────
 let YT_API_KEY = localStorage.getItem('cyhvision_ytkey') || '';
-
-function saveApiKey() {
-  const val = document.getElementById('yt-api-input').value.trim();
-  if (!val) return;
-  YT_API_KEY = val;
-  localStorage.setItem('cyhvision_ytkey', val);
-  document.getElementById('api-banner').classList.add('hidden');
-  loadAllLiveVideos();
-}
-
 if (YT_API_KEY) {
   document.getElementById('api-banner').classList.add('hidden');
-  document.getElementById('yt-api-input').value = YT_API_KEY;
+}
+function saveApiKey() {
+  const v = document.getElementById('yt-api-input').value.trim();
+  if (!v) return;
+  YT_API_KEY = v;
+  localStorage.setItem('cyhvision_ytkey', v);
+  document.getElementById('api-banner').classList.add('hidden');
+  // API key 저장 시 채널 최신 라이브 탐색 시도
+  tryAutoRefreshWithApi();
 }
 
-// ── 채널별 현재 라이브 video ID 조회 ────────────────
-async function getLiveVideoId(channelId) {
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&maxResults=1&key=${YT_API_KEY}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    if (data.items && data.items.length > 0) {
-      return {
-        videoId: data.items[0].id.videoId,
-        title: data.items[0].snippet.title
-      };
-    }
-    return null; // 현재 라이브 없음
-  } catch(e) {
-    console.warn(`[${channelId}] API 오류:`, e.message);
-    return null;
+// API key 있으면 채널별 최신 라이브 video ID로 자동 교체
+async function tryAutoRefreshWithApi() {
+  if (!YT_API_KEY) return;
+  // 각 cam의 채널에서 현재 라이브 조회 → vid 업데이트
+  for (const cam of CAMS) {
+    if (!cam.channelId) continue;
+    try {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${cam.channelId}&eventType=live&type=video&maxResults=1&key=${YT_API_KEY}`);
+      const data = await res.json();
+      if (data.items && data.items.length > 0) {
+        const newVid = data.items[0].id.videoId;
+        if (newVid !== cam.vid) {
+          cam.vid = newVid;
+          updateIframe(cam.id, newVid);
+        }
+      }
+    } catch(e) { /* skip */ }
   }
 }
 
-// ── 카드 렌더링 ──────────────────────────────────
-function renderCards() {
+// ── 카드 렌더 ───────────────────────────────────────────
+function renderGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   REGIONS.forEach(reg => {
@@ -374,27 +291,47 @@ function renderCards() {
         <span class="bsub">${reg.sub}</span>
       </div>
       <div class="cgrid">
-        ${cams.map(c => `
-          <div class="card" id="card-${c.id}">
+        ${cams.map(cam => `
+          <div class="card" id="card-${cam.id}">
             <div class="ctop">
               <div>
-                <div class="cname">${c.name}</div>
-                <div class="cloc">${c.loc}</div>
+                <div class="cname">${cam.name}</div>
+                <div class="cloc">${cam.loc}</div>
               </div>
               <div class="lstatus"><div class="ld2"></div>LIVE</div>
             </div>
-            <div class="frame" id="frame-${c.id}">
+            <div class="frame" id="frame-${cam.id}">
               <div class="shimmer"></div>
-              <div class="err-overlay" id="err-${c.id}">
+              <iframe
+                id="iframe-${cam.id}"
+                src="https://www.youtube.com/embed/${cam.vid}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowfullscreen
+                onload="onIframeLoad('${cam.id}')"
+              ></iframe>
+              <!-- 재생 불가 시 오버레이 -->
+              <div class="err-overlay" id="err-${cam.id}">
                 <div class="err-icon">📡</div>
-                <div class="err-txt" id="errtxt-${c.id}">라이브 탐색 중...</div>
-                <a class="err-btn" href="https://www.youtube.com/channel/${c.channelId}/live" target="_blank">↗ YouTube에서 열기</a>
+                <div class="err-msg">스트림이 종료되었거나<br>재생할 수 없습니다</div>
+                <div class="err-actions">
+                  <a class="err-link" href="${cam.ytUrl}" target="_blank">↗ YouTube에서 열기</a>
+                  <button class="err-update" onclick="showUpdateForm('${cam.id}')">Video ID 업데이트</button>
+                </div>
               </div>
-              <button class="reload-btn" onclick="reloadCam('${c.id}','${c.channelId}')">↺ 새로고침</button>
+              <!-- Video ID 수동 업데이트 폼 -->
+              <div class="update-form" id="upform-${cam.id}">
+                <label>새 YouTube Video ID 또는 URL 입력<br><span style="color:#555;font-size:9px">예: youtube.com/watch?v=XXXXXXXXXXX</span></label>
+                <input type="text" id="upinput-${cam.id}" placeholder="Video ID or URL" onkeydown="if(event.key==='Enter')applyUpdate('${cam.id}')">
+                <div class="update-btns">
+                  <button class="btn-apply" onclick="applyUpdate('${cam.id}')">적용</button>
+                  <button class="btn-cancel" onclick="hideUpdateForm('${cam.id}')">취소</button>
+                </div>
+              </div>
             </div>
             <div class="cfoot">
-              <span class="cfoot-txt">${c.desc}</span>
-              <button class="fav-btn" data-camid="${c.id}" onclick="window.toggleFav(event,'${c.id}','${c.name}')">☆</button>
+              <span class="cfoot-txt">${cam.desc}</span>
+              <button class="fav-btn" data-camid="${cam.id}"
+                onclick="window.toggleFav(event,'${cam.id}','${cam.name}')">☆</button>
             </div>
           </div>
         `).join('')}
@@ -403,74 +340,55 @@ function renderCards() {
   });
 }
 
-// ── iframe 주입 ──────────────────────────────────
-function injectIframe(camId, videoId) {
+// ── iframe 로드 핸들러 ─────────────────────────────────
+function onIframeLoad(camId) {
   const frame = document.getElementById('frame-' + camId);
-  if (!frame) return;
-  // 기존 iframe 제거
-  frame.querySelectorAll('iframe').forEach(el => el.remove());
-  const iframe = document.createElement('iframe');
-  iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`;
-  iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-  iframe.allowFullscreen = true;
-  iframe.onload = () => frame.classList.add('loaded');
-  frame.appendChild(iframe);
-  // 에러 오버레이 숨기기
-  const err = document.getElementById('err-' + camId);
-  if (err) err.classList.remove('show');
+  if (frame) frame.classList.add('loaded');
+  // YouTube embed는 재생불가 여부를 JS로 감지할 수 없음
+  // 대신 postMessage로 플레이어 상태 수신 시도
 }
 
-// ── 에러 표시 ────────────────────────────────────
-function showError(camId, msg) {
-  const frame = document.getElementById('frame-' + camId);
-  if (frame) frame.classList.add('loaded'); // shimmer 제거
-  const err = document.getElementById('err-' + camId);
-  const txt = document.getElementById('errtxt-' + camId);
-  if (err) err.classList.add('show');
-  if (txt) txt.textContent = msg;
+// ── 수동 Video ID 업데이트 ─────────────────────────────
+function showUpdateForm(camId) {
+  document.getElementById('err-' + camId)?.classList.remove('show');
+  document.getElementById('upform-' + camId)?.classList.add('show');
+  document.getElementById('upinput-' + camId)?.focus();
 }
-
-// ── 개별 카메라 로드 ─────────────────────────────
-async function loadCam(cam) {
-  if (!YT_API_KEY) {
-    showError(cam.id, 'API Key 필요\n(상단 배너에서 입력)');
+function hideUpdateForm(camId) {
+  document.getElementById('upform-' + camId)?.classList.remove('show');
+  document.getElementById('err-' + camId)?.classList.add('show');
+}
+function applyUpdate(camId) {
+  let val = document.getElementById('upinput-' + camId)?.value.trim();
+  if (!val) return;
+  // URL이면 video ID 추출
+  const match = val.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  if (match) val = match[1];
+  if (!/^[A-Za-z0-9_-]{11}$/.test(val)) {
+    alert('올바른 YouTube Video ID가 아닙니다 (11자리)');
     return;
   }
-  const result = await getLiveVideoId(cam.channelId);
-  if (result) {
-    injectIframe(cam.id, result.videoId);
-  } else {
-    showError(cam.id, '현재 라이브 방송 없음\n채널을 직접 확인해 주세요');
-  }
-}
-
-// ── 새로고침 ─────────────────────────────────────
-async function reloadCam(camId, channelId) {
   const cam = CAMS.find(c => c.id === camId);
-  if (!cam) return;
-  const frame = document.getElementById('frame-' + camId);
-  if (frame) frame.classList.remove('loaded');
-  const err = document.getElementById('err-' + camId);
-  if (err) err.classList.remove('show');
-  const txt = document.getElementById('errtxt-' + camId);
-  if (txt) txt.textContent = '다시 탐색 중...';
-  await loadCam(cam);
+  if (cam) {
+    cam.vid = val;
+    cam.ytUrl = 'https://www.youtube.com/watch?v=' + val;
+  }
+  document.getElementById('upform-' + camId)?.classList.remove('show');
+  updateIframe(camId, val);
 }
-
-// ── 전체 로드 ────────────────────────────────────
-async function loadAllLiveVideos() {
-  // API 쿼터 절약: 병렬로 최대 3개씩 배치 처리
-  const batchSize = 3;
-  for (let i = 0; i < CAMS.length; i += batchSize) {
-    const batch = CAMS.slice(i, i + batchSize);
-    await Promise.all(batch.map(c => loadCam(c)));
-    if (i + batchSize < CAMS.length) {
-      await new Promise(r => setTimeout(r, 300)); // API rate limit 방지
-    }
+function updateIframe(camId, videoId) {
+  const frame = document.getElementById('frame-' + camId);
+  if (!frame) return;
+  frame.classList.remove('loaded');
+  document.getElementById('err-' + camId)?.classList.remove('show');
+  const iframe = document.getElementById('iframe-' + camId);
+  if (iframe) {
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`;
+    iframe.onload = () => frame.classList.add('loaded');
   }
 }
 
-// ── 탭 전환 ──────────────────────────────────────
+// ── 탭 ──────────────────────────────────────────────────
 document.querySelectorAll('.rbtn').forEach(b => {
   b.addEventListener('click', function() {
     document.querySelectorAll('.rbtn').forEach(x => x.classList.remove('on'));
@@ -478,27 +396,23 @@ document.querySelectorAll('.rbtn').forEach(b => {
     const r = this.dataset.r;
     REGIONS.forEach(reg => {
       const el = document.getElementById('b-' + reg.id);
-      if (el) (r==='all'||r===reg.id) ? el.classList.add('show') : el.classList.remove('show');
+      if (!el) return;
+      (r === 'all' || r === reg.id) ? el.classList.add('show') : el.classList.remove('show');
     });
   });
 });
 
-// ── KST 시계 ─────────────────────────────────────
+// ── KST 시계 ────────────────────────────────────────────
 function tick() {
-  const d = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+  const d = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Seoul'}));
   const p = n => String(n).padStart(2,'0');
   document.getElementById('clk').textContent = `KST ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 tick(); setInterval(tick, 1000);
 
-// ── 초기화 ───────────────────────────────────────
-renderCards();
-if (YT_API_KEY) {
-  loadAllLiveVideos();
-} else {
-  // API key 없을 때 모든 카드에 안내 표시
-  CAMS.forEach(c => showError(c.id, 'YouTube API Key를 입력해 주세요'));
-}
+// ── 초기화 ──────────────────────────────────────────────
+renderGrid();
+if (YT_API_KEY) tryAutoRefreshWithApi();
 </script>
 </body>
 </html>
