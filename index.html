@@ -363,9 +363,9 @@ const CHZZK_STREAMERS = [
 ];
 
 // ═══════════════════════════════════════════════════
-//  섹션 전환
+//  섹션 전환 (URL hash로 새로고침 후에도 탭 유지)
 // ═══════════════════════════════════════════════════
-function switchSection(sec) {
+function switchSection(sec, skipHash) {
   document.querySelectorAll('.sec-btn').forEach(b => b.classList.toggle('on', b.dataset.sec === sec));
   document.querySelectorAll('.section').forEach(s => s.classList.toggle('show', s.id === 'section-'+sec));
   if (sec === 'broadcast' && !window._bcLoaded) {
@@ -373,11 +373,11 @@ function switchSection(sec) {
     renderBroadcast();
     loadAllBroadcastStatus();
   }
-  if (window._fbDb && window._fbUser) {
-    const { ref, set } = window._fbModules || {};
-    // Firebase 저장은 module scope에서만 가능하므로 이벤트로 처리
-    document.dispatchEvent(new CustomEvent('saveSection', {detail: sec}));
+  if (!skipHash) {
+    history.replaceState(null, '', sec === 'cctv' ? '#cctv' : '#broadcast');
   }
+  // Firebase 저장
+  document.dispatchEvent(new CustomEvent('saveSection', {detail: sec}));
 }
 // Firebase module에서 이벤트 처리
 document.addEventListener('saveSection', e => {
@@ -387,6 +387,11 @@ document.addEventListener('saveSection', e => {
     });
   }
 });
+// 새로고침 시 hash로 탭 복원
+(function() {
+  const hash = location.hash.replace('#','');
+  if (hash === 'broadcast') switchSection('broadcast', true);
+})();
 
 // ═══════════════════════════════════════════════════
 //  CCTV 렌더
@@ -574,23 +579,25 @@ async function proxyFetch(apiUrl) {
 }
 
 // ── SOOP 상태 조회 ──────────────────────────────
-// 비공식 API: live.sooplive.co.kr/afreeca/player_live_api.php (POST)
-// 방송중이면 CHANNEL.RESULT=1, BNO(방송번호), THUMB 제공
+// 비공식 API: station.sooplive.co.kr/api/get_broad_state_list
+// GET ?user_id={soopId}&broad_no=0&type=live
+// 응답: RESULT=1이면 방송중, REAL_BROAD[0].broad_img = 썸네일
 async function fetchSoop(soopId) {
-  const apiUrl = `https://live.sooplive.co.kr/afreeca/player_live_api.php?bjid=${soopId}`;
-  // POST body
-  const body = `bjid=${soopId}&mode=landing&player_type=html5&is_compression_str=0`;
-  // allorigins는 GET만 지원 → GET 파라미터로 상태 확인하는 엔드포인트 사용
-  const statusUrl = `https://api.sooplive.co.kr/api/get_station_status_simple?user_id=${soopId}`;
+  // 1차: station API (방송번호 없이 user_id만으로 현재 방송 조회)
+  const apiUrl = `https://station.sooplive.co.kr/api/get_broad_state_list?user_id=${soopId}&broad_no=0&type=live&mode=station`;
   try {
-    const json = await proxyFetch(statusUrl);
-    // 응답: { user_id, is_live, broad_no, ... }
-    const isLive = json?.data?.is_live === 1 || json?.data?.is_live === '1';
-    const broadNo = json?.data?.broad_no;
-    const thumb = broadNo ? `https://liveimg.sooplive.co.kr/m/${broadNo}` : null;
-    const title = json?.data?.broad_title || null;
-    const viewers = json?.data?.current_sum_viewer || null;
-    return { isLive, thumb, title, viewers };
+    const json = await proxyFetch(apiUrl);
+    const result = String(json?.RESULT ?? json?.result ?? '0');
+    if (result === '1' && json?.REAL_BROAD?.length > 0) {
+      const b = json.REAL_BROAD[0];
+      return {
+        isLive: true,
+        thumb: b.broad_img || `https://liveimg.sooplive.co.kr/m/${b.broad_no}`,
+        title: b.broad_title || null,
+        viewers: b.total_view_cnt ? parseInt(b.total_view_cnt) : null,
+      };
+    }
+    return { isLive: false, thumb: null, title: null, viewers: null };
   } catch {
     return { isLive: false, thumb: null, title: null, viewers: null };
   }
