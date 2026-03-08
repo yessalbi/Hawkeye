@@ -122,14 +122,14 @@ header {
 .btitle { font-size:15px; font-weight:500 }
 .bsub { font-family:'DM Mono',monospace; font-size:10px; color:var(--mut) }
 
-.cgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; margin-bottom:28px }
-@media(min-width:1500px){.cgrid{grid-template-columns:repeat(4,1fr)}}
-@media(min-width:1100px) and (max-width:1499px){.cgrid{grid-template-columns:repeat(3,1fr)}}
+.cgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; margin-bottom:24px }
+@media(min-width:1400px){.cgrid{grid-template-columns:repeat(5,1fr)}}
+@media(min-width:1000px) and (max-width:1399px){.cgrid{grid-template-columns:repeat(4,1fr)}}
 
 /* ── CCTV CARD ── */
 .card { background:var(--sur); border-radius:var(--r); overflow:hidden; border:1px solid var(--brd); box-shadow:0 1px 10px rgba(0,0,0,.05); transition:box-shadow .2s,transform .2s }
 .card:hover { box-shadow:0 6px 24px rgba(0,0,0,.10); transform:translateY(-2px) }
-.ctop { padding:9px 11px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--brd); gap:8px }
+.ctop { padding:7px 10px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--brd); gap:8px }
 .ctop-left { min-width:0; flex:1 }
 .cname { font-size:12px; font-weight:500; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .cloc { font-size:10px; color:var(--mut); margin-top:1px }
@@ -160,7 +160,7 @@ header {
 .btn-ok { background:var(--acc); color:#fff } .btn-ok:hover { background:var(--acc2) }
 .btn-cx { background:#1e1e1e; color:#777 } .btn-cx:hover { background:#2a2a2a }
 
-.cfoot { padding:7px 11px; background:var(--sur2); font-family:'DM Mono',monospace; font-size:9.5px; color:var(--mut); display:flex; justify-content:space-between; align-items:center; gap:6px }
+.cfoot { padding:5px 10px; background:var(--sur2); font-family:'DM Mono',monospace; font-size:9.5px; color:var(--mut); display:flex; justify-content:space-between; align-items:center; gap:6px }
 .cfoot-txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 }
 .fav-btn { background:none; border:none; cursor:pointer; font-size:13px; color:#bbb; padding:0; line-height:1; flex-shrink:0; transition:transform .15s,color .15s }
 .fav-btn:hover { transform:scale(1.3); color:#F6AD55 }
@@ -181,10 +181,10 @@ header {
 .platform-logo.chzzk { background:var(--chzzk); color:#003d14 }
 .platform-desc { font-size:11.5px; color:var(--mut) }
 
-.bc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px }
-@media(min-width:1400px){.bc-grid{grid-template-columns:repeat(6,1fr)}}
-@media(min-width:1100px) and (max-width:1399px){.bc-grid{grid-template-columns:repeat(5,1fr)}}
-@media(min-width:800px) and (max-width:1099px){.bc-grid{grid-template-columns:repeat(4,1fr)}}
+.bc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:8px }
+@media(min-width:1300px){.bc-grid{grid-template-columns:repeat(8,1fr)}}
+@media(min-width:1000px) and (max-width:1299px){.bc-grid{grid-template-columns:repeat(6,1fr)}}
+@media(min-width:700px) and (max-width:999px){.bc-grid{grid-template-columns:repeat(5,1fr)}}
 
 /* 방송 카드 */
 .bc-card {
@@ -216,11 +216,11 @@ header {
 .bc-live-badge.soop-badge { background:var(--soop) }
 .bc-live-badge.chzzk-badge { background:var(--chzzk); color:#003d14 }
 
-.bc-info { padding:9px 10px 10px }
-.bc-name { font-size:12px; font-weight:500; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.bc-info { padding:7px 9px 8px }
+.bc-name { font-size:11px; font-weight:500; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .bc-platform-tag { font-family:'DM Mono',monospace; font-size:9px; color:var(--mut); margin-top:2px }
 .bc-title {
-  font-size:10.5px; color:var(--mut); margin-top:4px;
+  font-size:10px; color:var(--mut); margin-top:4px;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   line-height:1.4; min-height:29px;
 }
@@ -560,54 +560,39 @@ function fmtNum(n){
 }
 
 // ═══════════════════════════════════════════════════
-//  CORS 프록시 유틸 (corsproxy.io 우선, 실패 시 allorigins 폴백)
+//  CORS 프록시 (allorigins only — corsproxy는 CHZZK 403, SOOP 413)
 // ═══════════════════════════════════════════════════
-async function proxyFetch(apiUrl) {
-  // 1순위: corsproxy.io (빠름, JSON 직접 반환)
-  try {
-    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const text = await res.text();
-      return JSON.parse(text);
-    }
-  } catch {}
-  // 2순위: allorigins.win (폴백)
-  const res2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`, { signal: AbortSignal.timeout(8000) });
-  if (!res2.ok) throw new Error('proxy failed');
-  const outer = await res2.json();
+async function proxyFetch(apiUrl, timeout=12000) {
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout) });
+  if (!res.ok) throw new Error(`proxy ${res.status}`);
+  const outer = await res.json();
+  if (!outer.contents) throw new Error('empty contents');
   return JSON.parse(outer.contents);
 }
 
 // ── SOOP 상태 조회 ──────────────────────────────
-// 검증된 GET API:
-//   live.sooplive.co.kr/afreeca/broad_list_api.php?szBjId={id}&nListCnt=1
-// 방송 중이면 REAL_BROAD 배열에 항목 존재
-// 방송 없으면 REAL_BROAD = [] 또는 미존재
-// 썸네일: REAL_BROAD[0].broad_img = https://liveimg.sooplive.co.kr/m/{BNO}
+// endpoint: live.sooplive.co.kr/afreeca/broad_list_api.php
+// URL 짧게 유지 (413 방지)
 async function fetchSoop(soopId) {
-  // broad_list_api: GET, 현재 방송 중인 방송 목록 (해당 BJ 필터)
-  const apiUrl = `https://live.sooplive.co.kr/afreeca/broad_list_api.php?szBjId=${soopId}&nListCnt=1&nPageNo=1&szSysType=html5&szBroadType=live&szOrderType=view_cnt`;
+  const apiUrl = `https://live.sooplive.co.kr/afreeca/broad_list_api.php?szBjId=${soopId}&nListCnt=1`;
   try {
-    const json = await proxyFetch(apiUrl);
-    console.log(`[SOOP] ${soopId}:`, JSON.stringify(json).slice(0, 300));
-    // 정상 응답: { RESULT:"1", HAS_MORE_LIST:false, REAL_BROAD:[{...}] }
-    // 오프라인:  { RESULT:"1", HAS_MORE_LIST:false, REAL_BROAD:[] }
-    //        또는 { RESULT:"-1" } 등
+    const json = await proxyFetch(apiUrl, 15000);
+    console.log(`[SOOP] ${soopId}:`, JSON.stringify(json).slice(0, 200));
     const list = json?.REAL_BROAD ?? json?.real_broad ?? [];
     if (Array.isArray(list) && list.length > 0) {
       const b = list[0];
       const bno = b?.broad_no ?? b?.BROAD_NO ?? null;
-      const thumb = b?.broad_img ?? (bno ? `https://liveimg.sooplive.co.kr/m/${bno}` : null);
       return {
         isLive: true,
-        thumb,
-        title: b?.broad_title ?? b?.TITLE ?? null,
+        thumb: b?.broad_img ?? (bno ? `https://liveimg.sooplive.co.kr/m/${bno}` : null),
+        title: b?.broad_title ?? null,
         viewers: b?.total_view_cnt ? parseInt(b.total_view_cnt) : null,
       };
     }
     return { isLive: false, thumb: null, title: null, viewers: null };
   } catch(e) {
-    console.error(`[SOOP] ${soopId} error:`, e);
+    console.error(`[SOOP] ${soopId} error:`, e.message);
     return { isLive: false, thumb: null, title: null, viewers: null };
   }
 }
@@ -631,24 +616,26 @@ async function loadSoopStatus() {
 }
 
 // ── CHZZK 상태 조회 ─────────────────────────────
-// 치지직 공개 API: api.chzzk.naver.com/service/v2/channels/{id}/live-detail
+// v1 endpoint (v2는 403 차단됨)
 async function fetchChzzk(chzzkId) {
-  const apiUrl = `https://api.chzzk.naver.com/service/v2/channels/${chzzkId}/live-detail`;
-  const json = await proxyFetch(apiUrl);
-  return json?.content ?? null;
+  const apiUrl = `https://api.chzzk.naver.com/service/v1/channels/${chzzkId}/live-detail`;
+  try {
+    const json = await proxyFetch(apiUrl, 15000);
+    console.log(`[CHZZK] ${chzzkId.slice(0,8)}:`, JSON.stringify(json).slice(0, 150));
+    return json?.content ?? null;
+  } catch(e) {
+    console.error(`[CHZZK] ${chzzkId.slice(0,8)} error:`, e.message);
+    return null;
+  }
 }
 
 async function loadChzzkStatus() {
   let liveCount = 0;
   const results = await Promise.allSettled(
     CHZZK_STREAMERS.map(async s => {
-      try {
-        const content = await fetchChzzk(s.chzzkId);
-        const isLive = content?.status === 'OPEN';
-        return { s, isLive, data: content };
-      } catch {
-        return { s, isLive: false, data: null };
-      }
+      const content = await fetchChzzk(s.chzzkId);
+      const isLive = content?.status === 'OPEN';
+      return { s, isLive, data: content };
     })
   );
   results.forEach(r => {
@@ -660,7 +647,6 @@ async function loadChzzkStatus() {
   });
   return liveCount;
 }
-
 async function loadAllBroadcastStatus() {
   const [soopLive, chzzkLive] = await Promise.all([loadSoopStatus(), loadChzzkStatus()]);
   const total = soopLive + chzzkLive;
