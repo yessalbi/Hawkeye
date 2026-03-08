@@ -560,24 +560,18 @@ function fmtNum(n){
 }
 
 // ═══════════════════════════════════════════════════
-//  CORS 프록시 (allorigins only — corsproxy는 CHZZK 403, SOOP 413)
+//  Workers 프록시 URL 설정
+//  배포 후 아래 URL을 실제 Workers URL로 교체하세요
+//  예: https://cyh-proxy.your-id.workers.dev
 // ═══════════════════════════════════════════════════
-async function proxyFetch(apiUrl, timeout=12000) {
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
-  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout) });
-  if (!res.ok) throw new Error(`proxy ${res.status}`);
-  const outer = await res.json();
-  if (!outer.contents) throw new Error('empty contents');
-  return JSON.parse(outer.contents);
-}
+const PROXY = 'https://cyh-proxy.YOUR_ID.workers.dev'; // ← 여기 교체
 
 // ── SOOP 상태 조회 ──────────────────────────────
-// endpoint: live.sooplive.co.kr/afreeca/broad_list_api.php
-// URL 짧게 유지 (413 방지)
 async function fetchSoop(soopId) {
-  const apiUrl = `https://live.sooplive.co.kr/afreeca/broad_list_api.php?szBjId=${soopId}&nListCnt=1`;
   try {
-    const json = await proxyFetch(apiUrl, 15000);
+    const res = await fetch(`${PROXY}/soop?id=${soopId}`, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
     console.log(`[SOOP] ${soopId}:`, JSON.stringify(json).slice(0, 200));
     const list = json?.REAL_BROAD ?? json?.real_broad ?? [];
     if (Array.isArray(list) && list.length > 0) {
@@ -592,39 +586,35 @@ async function fetchSoop(soopId) {
     }
     return { isLive: false, thumb: null, title: null, viewers: null };
   } catch(e) {
-    console.error(`[SOOP] ${soopId} error:`, e.message);
+    console.error(`[SOOP] ${soopId}:`, e.message);
     return { isLive: false, thumb: null, title: null, viewers: null };
   }
 }
 
 async function loadSoopStatus() {
   const results = await Promise.allSettled(
-    SOOP_STREAMERS.map(async s => {
-      const data = await fetchSoop(s.soopId);
-      return { s, ...data };
-    })
+    SOOP_STREAMERS.map(async s => ({ s, ...(await fetchSoop(s.soopId)) }))
   );
   let liveCount = 0;
   results.forEach(r => {
-    if (r.status === 'fulfilled') {
-      const { s, isLive, thumb, title, viewers } = r.value;
-      if (isLive) liveCount++;
-      renderBcCard(s, isLive, { liveImageUrl: thumb, liveTitle: title, concurrentUserCount: viewers }, 'soop');
-    }
+    if (r.status !== 'fulfilled') return;
+    const { s, isLive, thumb, title, viewers } = r.value;
+    if (isLive) liveCount++;
+    renderBcCard(s, isLive, { liveImageUrl: thumb, liveTitle: title, concurrentUserCount: viewers }, 'soop');
   });
   return liveCount;
 }
 
-// ── CHZZK 상태 조회 ─────────────────────────────
-// v1 endpoint (v2는 403 차단됨)
+// ── 치지직 상태 조회 ─────────────────────────────
 async function fetchChzzk(chzzkId) {
-  const apiUrl = `https://api.chzzk.naver.com/service/v1/channels/${chzzkId}/live-detail`;
   try {
-    const json = await proxyFetch(apiUrl, 15000);
+    const res = await fetch(`${PROXY}/chzzk?id=${chzzkId}`, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
     console.log(`[CHZZK] ${chzzkId.slice(0,8)}:`, JSON.stringify(json).slice(0, 150));
     return json?.content ?? null;
   } catch(e) {
-    console.error(`[CHZZK] ${chzzkId.slice(0,8)} error:`, e.message);
+    console.error(`[CHZZK] ${chzzkId.slice(0,8)}:`, e.message);
     return null;
   }
 }
@@ -634,16 +624,14 @@ async function loadChzzkStatus() {
   const results = await Promise.allSettled(
     CHZZK_STREAMERS.map(async s => {
       const content = await fetchChzzk(s.chzzkId);
-      const isLive = content?.status === 'OPEN';
-      return { s, isLive, data: content };
+      return { s, isLive: content?.status === 'OPEN', data: content };
     })
   );
   results.forEach(r => {
-    if (r.status === 'fulfilled') {
-      const { s, isLive, data } = r.value;
-      if (isLive) liveCount++;
-      renderBcCard(s, isLive, data, 'chzzk');
-    }
+    if (r.status !== 'fulfilled') return;
+    const { s, isLive, data } = r.value;
+    if (isLive) liveCount++;
+    renderBcCard(s, isLive, data, 'chzzk');
   });
   return liveCount;
 }
