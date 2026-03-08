@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CYH VISION — 실시간 도시 뷰어</title>
+<title>CYH VISION</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
+<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -19,7 +20,7 @@
     projectId:"cyh-hawkeye",storageBucket:"cyh-hawkeye.firebasestorage.app",
     messagingSenderId:"942927608449",appId:"1:942927608449:web:a7179aa28d8fbc9dc56b80"
   });
-  const db=getDatabase(app), auth=getAuth(app);
+  const db=getDatabase(app),auth=getAuth(app);
   signInAnonymously(auth).catch(console.error);
   onAuthStateChanged(auth,user=>{
     if(!user)return;
@@ -32,10 +33,10 @@
         btn.style.color=window._favs[btn.dataset.camid]?'#F6AD55':'#bbb';
       });
     });
-    get(ref(db,`livescope/lastRegion/${user.uid}`)).then(snap=>{
-      const r=snap.val();if(r){const b=document.querySelector(`.rbtn[data-r="${r}"]`);if(b)b.click();}
+    get(ref(db,`livescope/lastSection/${user.uid}`)).then(snap=>{
+      const s=snap.val();
+      if(s==='broadcast') switchSection('broadcast');
     });
-    document.querySelectorAll('.rbtn').forEach(b=>b.addEventListener('click',()=>set(ref(db,`livescope/lastRegion/${user.uid}`),b.dataset.r)));
     window.toggleFav=(e,id,name)=>{
       e.stopPropagation();
       const f={...(window._favs||{})};
@@ -43,112 +44,215 @@
       set(ref(db,`livescope/favorites/${user.uid}`),f);
     };
     set(ref(db,`livescope/lastVisit/${user.uid}`),new Date().toISOString());
+    window._fbUser=user;
+    window._fbDb=db;
   });
-  window._favs={};window.toggleFav=()=>{};
+  window._favs={};window.toggleFav=()=>{};window._fbUser=null;window._fbDb=null;
 </script>
 
 <style>
-:root{
-  --bg:#F5F4F0;--sur:#FFF;--sur2:#EFEDE7;--txt:#181816;--mut:#87867E;
-  --acc:#2C6E49;--acl:#EAF4EE;--brd:#E2E0D9;--live:#E53E3E;--r:12px;
+:root {
+  --bg: #F5F4F0; --sur: #FFFFFF; --sur2: #EFEDE8; --sur3: #E8E6E0;
+  --txt: #181816; --mut: #87867E; --brd: #E0DED7;
+  --acc: #2C6E49; --acl: #EAF4EE; --acc2: #245B3C;
+  --live: #E53E3E; --live2: rgba(229,62,62,.08);
+  --soop: #6B4EFF; --chzzk: #00C73C;
+  --r: 12px; --r2: 8px;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;font-weight:300;min-height:100vh}
+* { margin:0; padding:0; box-sizing:border-box }
+body { background:var(--bg); color:var(--txt); font-family:'DM Sans',sans-serif; font-weight:300; min-height:100vh; overflow-x:hidden }
 
-header{
-  position:sticky;top:0;z-index:200;
-  background:rgba(245,244,240,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--brd);height:58px;padding:0 24px;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
+/* ── HEADER ── */
+header {
+  position:sticky; top:0; z-index:300;
+  background:rgba(245,244,240,.97); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--brd); height:56px; padding:0 24px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
 }
-.logo{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.14em;display:flex;align-items:center;gap:9px;flex-shrink:0}
-.ldot{width:7px;height:7px;background:var(--live);border-radius:50%;animation:pulse-r 2s ease-in-out infinite}
-@keyframes pulse-r{0%{box-shadow:0 0 0 0 rgba(229,62,62,.4)}50%{box-shadow:0 0 0 7px rgba(229,62,62,0)}100%{box-shadow:0 0 0 0 rgba(229,62,62,0)}}
-.hdr-r{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.live-pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--live);background:rgba(229,62,62,.07);border:1px solid rgba(229,62,62,.2);border-radius:100px;padding:3px 9px;white-space:nowrap}
-.clk{font-family:'DM Mono',monospace;font-size:11px;color:var(--mut);white-space:nowrap}
-.fb-status{display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;color:var(--mut)}
-.fb-dot{width:5px;height:5px;border-radius:50%;background:#ccc;transition:background .4s}.fb-dot.on{background:var(--acc)}
+.logo { font-family:'DM Mono',monospace; font-size:13.5px; letter-spacing:.16em; display:flex; align-items:center; gap:8px; flex-shrink:0 }
+.ldot { width:6px; height:6px; background:var(--live); border-radius:50%; animation:pulse-r 2s ease-in-out infinite }
+@keyframes pulse-r { 0%{box-shadow:0 0 0 0 rgba(229,62,62,.4)} 50%{box-shadow:0 0 0 6px rgba(229,62,62,0)} 100%{box-shadow:0 0 0 0 rgba(229,62,62,0)} }
+.hdr-r { display:flex; align-items:center; gap:10px; flex-shrink:0 }
+.live-pill { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.1em; color:var(--live); background:var(--live2); border:1px solid rgba(229,62,62,.22); border-radius:100px; padding:3px 9px }
+.clk { font-family:'DM Mono',monospace; font-size:11px; color:var(--mut) }
+.fb-status { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:10px; color:var(--mut) }
+.fb-dot { width:5px; height:5px; border-radius:50%; background:#ccc; transition:background .4s } .fb-dot.on { background:var(--acc) }
 
-.rnav{padding:14px 24px 0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
-.rnav::-webkit-scrollbar{display:none}
-.rbtn{flex-shrink:0;white-space:nowrap;font-size:12.5px;padding:7px 16px;border-radius:100px;border:1.5px solid var(--brd);background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
-.rbtn:hover{border-color:var(--acc);color:var(--acc);background:var(--acl)}
-.rbtn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+/* ── SECTION TABS (CCTV / BROADCAST) ── */
+.sec-nav {
+  padding:14px 24px 0; display:flex; gap:0; border-bottom:1px solid var(--brd);
+  background:var(--bg);
+}
+.sec-btn {
+  font-family:'DM Mono',monospace; font-size:11px; letter-spacing:.06em;
+  padding:9px 20px 10px; border:none; background:none; cursor:pointer;
+  color:var(--mut); border-bottom:2px solid transparent; margin-bottom:-1px;
+  transition:color .15s,border-color .15s; white-space:nowrap;
+}
+.sec-btn:hover { color:var(--txt) }
+.sec-btn.on { color:var(--txt); border-bottom-color:var(--txt); font-weight:500 }
+.sec-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:8.5px; background:var(--sur3); color:var(--mut);
+  border-radius:100px; padding:1px 6px; margin-left:5px; vertical-align:middle;
+}
+.sec-btn.on .sec-badge { background:var(--acc); color:#fff }
 
-.main{padding:18px 24px 60px}
-.rblock{display:none}
-.rblock.show{display:block;animation:fadeup .22s ease both}
-@keyframes fadeup{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-.bhead{display:flex;align-items:baseline;gap:10px;margin-bottom:13px}
-.btitle{font-size:15px;font-weight:500}.bsub{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut)}
+/* ── SECTION CONTENT ── */
+.section { display:none }
+.section.show { display:block }
 
-.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:13px;margin-bottom:28px}
+/* ── REGION NAV ── */
+.rnav { padding:14px 24px 0; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; background:var(--bg) }
+.rnav::-webkit-scrollbar { display:none }
+.rbtn {
+  flex-shrink:0; white-space:nowrap; font-size:12px; padding:6px 15px;
+  border-radius:100px; border:1.5px solid var(--brd); background:var(--sur);
+  color:var(--mut); cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:4px;
+}
+.rbtn:hover { border-color:var(--acc); color:var(--acc); background:var(--acl) }
+.rbtn.on { background:var(--acc); border-color:var(--acc); color:#fff }
+
+/* ── MAIN GRID ── */
+.main { padding:18px 24px 60px }
+.rblock { display:none }
+.rblock.show { display:block; animation:fadeup .2s ease both }
+@keyframes fadeup { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.bhead { display:flex; align-items:baseline; gap:9px; margin-bottom:12px; padding-top:4px }
+.btitle { font-size:15px; font-weight:500 }
+.bsub { font-family:'DM Mono',monospace; font-size:10px; color:var(--mut) }
+
+.cgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; margin-bottom:28px }
 @media(min-width:1500px){.cgrid{grid-template-columns:repeat(4,1fr)}}
 @media(min-width:1100px) and (max-width:1499px){.cgrid{grid-template-columns:repeat(3,1fr)}}
 
-.card{background:var(--sur);border-radius:var(--r);overflow:hidden;border:1px solid var(--brd);box-shadow:0 1px 10px rgba(0,0,0,.05);transition:box-shadow .2s,transform .2s}
-.card:hover{box-shadow:0 6px 28px rgba(0,0,0,.1);transform:translateY(-2px)}
-
-/* 카드 헤더 */
-.ctop{padding:9px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--brd);gap:8px}
-.ctop-left{min-width:0;flex:1}
-.cname{font-size:12px;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cloc{font-size:10px;color:var(--mut);margin-top:1px}
-.ctop-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
-
-/* URL 수정 버튼 */
-.edit-btn{
-  background:none;border:1px solid var(--brd);border-radius:5px;
-  padding:3px 7px;cursor:pointer;
-  font-family:'DM Mono',monospace;font-size:9px;color:var(--mut);
-  transition:all .15s;white-space:nowrap;line-height:1;
+/* ── CCTV CARD ── */
+.card { background:var(--sur); border-radius:var(--r); overflow:hidden; border:1px solid var(--brd); box-shadow:0 1px 10px rgba(0,0,0,.05); transition:box-shadow .2s,transform .2s }
+.card:hover { box-shadow:0 6px 24px rgba(0,0,0,.10); transform:translateY(-2px) }
+.ctop { padding:9px 11px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--brd); gap:8px }
+.ctop-left { min-width:0; flex:1 }
+.cname { font-size:12px; font-weight:500; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.cloc { font-size:10px; color:var(--mut); margin-top:1px }
+.ctop-right { display:flex; align-items:center; gap:6px; flex-shrink:0 }
+.edit-btn {
+  background:none; border:1px solid var(--brd); border-radius:5px;
+  padding:2px 7px; cursor:pointer; font-family:'DM Mono',monospace;
+  font-size:9px; color:var(--mut); transition:all .15s; line-height:1.4;
 }
-.edit-btn:hover{border-color:var(--acc);color:var(--acc);background:var(--acl)}
+.edit-btn:hover { border-color:var(--acc); color:var(--acc); background:var(--acl) }
+.lstatus { display:flex; align-items:center; gap:3px; font-family:'DM Mono',monospace; font-size:9px; color:var(--live) }
+.ld2 { width:4px; height:4px; background:var(--live); border-radius:50%; animation:pulse-r 1.8s ease-in-out infinite }
 
-.lstatus{display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;color:var(--live)}
-.ld2{width:5px;height:5px;background:var(--live);border-radius:50%;animation:pulse-r 1.8s ease-in-out infinite}
+.frame { position:relative; width:100%; padding-bottom:56.25%; background:#0d0d0d; overflow:hidden }
+.frame iframe { position:absolute; inset:0; width:100%; height:100%; border:none; z-index:1 }
+.shimmer { position:absolute; inset:0; z-index:2; background:linear-gradient(90deg,#111 25%,#1c1c1c 50%,#111 75%); background-size:200% 100%; animation:shim 1.6s infinite }
+.frame.loaded .shimmer { display:none }
+@keyframes shim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-/* 영상 프레임 */
-.frame{position:relative;width:100%;padding-bottom:56.25%;background:#0d0d0d;overflow:hidden}
-.frame iframe{position:absolute;inset:0;width:100%;height:100%;border:none;z-index:1}
-.shimmer{position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,#111 25%,#1c1c1c 50%,#111 75%);background-size:200% 100%;animation:shim 1.6s infinite}
-.frame.loaded .shimmer{display:none}
-@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* edit overlay */
+.edit-overlay { display:none; position:absolute; inset:0; z-index:10; background:rgba(6,6,6,.97); flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:18px }
+.edit-overlay.show { display:flex }
+.edit-overlay label { font-family:'DM Mono',monospace; font-size:10px; color:#777; text-align:center; line-height:1.7 }
+.edit-overlay input { width:100%; max-width:270px; padding:8px 11px; border-radius:6px; border:1px solid #252525; background:#141414; color:#eee; font-family:'DM Mono',monospace; font-size:12px; text-align:center; outline:none; transition:border-color .2s }
+.edit-overlay input:focus { border-color:#3a3a3a }
+.edit-btns { display:flex; gap:7px }
+.edit-btns button { padding:6px 16px; border-radius:5px; font-family:'DM Mono',monospace; font-size:10px; cursor:pointer; border:none }
+.btn-ok { background:var(--acc); color:#fff } .btn-ok:hover { background:var(--acc2) }
+.btn-cx { background:#1e1e1e; color:#777 } .btn-cx:hover { background:#2a2a2a }
 
-/* URL 편집 오버레이 */
-.edit-overlay{
-  display:none;position:absolute;inset:0;z-index:10;
-  background:rgba(8,8,8,.97);
-  flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;
+.cfoot { padding:7px 11px; background:var(--sur2); font-family:'DM Mono',monospace; font-size:9.5px; color:var(--mut); display:flex; justify-content:space-between; align-items:center; gap:6px }
+.cfoot-txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 }
+.fav-btn { background:none; border:none; cursor:pointer; font-size:13px; color:#bbb; padding:0; line-height:1; flex-shrink:0; transition:transform .15s,color .15s }
+.fav-btn:hover { transform:scale(1.3); color:#F6AD55 }
+
+/* ── BROADCAST SECTION ── */
+#section-broadcast .main { padding-top:18px }
+
+.platform-block { margin-bottom:36px }
+.platform-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--brd);
 }
-.edit-overlay.show{display:flex}
-.edit-overlay label{font-family:'DM Mono',monospace;font-size:10px;color:#777;text-align:center;line-height:1.7}
-.edit-overlay input{
-  width:100%;max-width:280px;padding:8px 12px;border-radius:7px;
-  border:1px solid #2a2a2a;background:#161616;
-  color:#eee;font-family:'DM Mono',monospace;font-size:12px;text-align:center;outline:none;
-  transition:border-color .2s;
+.platform-logo {
+  font-family:'DM Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.06em;
+  padding:4px 11px; border-radius:5px; color:#fff;
 }
-.edit-overlay input:focus{border-color:#444}
-.edit-btns{display:flex;gap:8px}
-.edit-btns button{padding:7px 18px;border-radius:6px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;border:none;transition:opacity .15s}
-.btn-ok{background:var(--acc);color:#fff}.btn-ok:hover{opacity:.85}
-.btn-cx{background:#222;color:#777}.btn-cx:hover{background:#2a2a2a}
+.platform-logo.soop { background:var(--soop) }
+.platform-logo.chzzk { background:var(--chzzk); color:#003d14 }
+.platform-desc { font-size:11.5px; color:var(--mut) }
 
-.cfoot{padding:7px 12px;background:var(--sur2);font-family:'DM Mono',monospace;font-size:9.5px;color:var(--mut);display:flex;justify-content:space-between;align-items:center;gap:6px}
-.cfoot-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.fav-btn{background:none;border:none;cursor:pointer;font-size:14px;color:#bbb;padding:0;line-height:1;flex-shrink:0;transition:transform .15s,color .15s}
-.fav-btn:hover{transform:scale(1.3);color:#F6AD55}
+.bc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px }
+@media(min-width:1400px){.bc-grid{grid-template-columns:repeat(6,1fr)}}
+@media(min-width:1100px) and (max-width:1399px){.bc-grid{grid-template-columns:repeat(5,1fr)}}
+@media(min-width:800px) and (max-width:1099px){.bc-grid{grid-template-columns:repeat(4,1fr)}}
 
-footer{text-align:center;padding:20px;font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;border-top:1px solid var(--brd);letter-spacing:.04em}
+/* 방송 카드 */
+.bc-card {
+  background:var(--sur); border:1px solid var(--brd); border-radius:var(--r);
+  overflow:hidden; cursor:pointer; transition:box-shadow .2s,transform .2s;
+  text-decoration:none; display:block;
+}
+.bc-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.1); transform:translateY(-2px) }
+.bc-card.is-live { border-color:rgba(229,62,62,.3) }
+.bc-card.is-live.chzzk-live { border-color:rgba(0,199,60,.3) }
+.bc-card.is-live.soop-live { border-color:rgba(107,78,255,.3) }
 
-@media(max-width:600px){
-  header{padding:0 14px;height:52px}
-  .clk{display:none}
-  .rnav{padding:10px 14px 0}
-  .main{padding:12px 14px 50px}
-  .cgrid{grid-template-columns:1fr;gap:10px}
+.bc-thumb {
+  position:relative; width:100%; padding-bottom:56.25%; background:#111; overflow:hidden;
+}
+.bc-thumb img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:opacity .3s }
+.bc-thumb-placeholder {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#1a1a1a,#111);
+  font-size:28px; opacity:.25;
+}
+.bc-live-badge {
+  position:absolute; top:7px; left:7px; z-index:2;
+  font-family:'DM Mono',monospace; font-size:8.5px; font-weight:500; letter-spacing:.08em;
+  padding:2px 7px; border-radius:4px; color:#fff;
+  display:none;
+}
+.bc-card.is-live .bc-live-badge { display:block }
+.bc-live-badge.soop-badge { background:var(--soop) }
+.bc-live-badge.chzzk-badge { background:var(--chzzk); color:#003d14 }
+
+.bc-info { padding:9px 10px 10px }
+.bc-name { font-size:12px; font-weight:500; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.bc-platform-tag { font-family:'DM Mono',monospace; font-size:9px; color:var(--mut); margin-top:2px }
+.bc-title {
+  font-size:10.5px; color:var(--mut); margin-top:4px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  line-height:1.4; min-height:29px;
+}
+.bc-title.live-now { color:var(--txt) }
+.bc-status {
+  margin-top:6px; display:flex; align-items:center; gap:4px;
+  font-family:'DM Mono',monospace; font-size:9px;
+}
+.bc-status-dot { width:5px; height:5px; border-radius:50%; background:#ccc; flex-shrink:0 }
+.bc-status.on .bc-status-dot { background:var(--live); animation:pulse-r 1.8s ease-in-out infinite }
+.bc-status.on .bc-status-txt { color:var(--live) }
+.bc-status-txt { color:var(--mut) }
+.bc-viewers { font-family:'DM Mono',monospace; font-size:9px; color:var(--mut); margin-left:auto }
+
+/* 로딩 스켈레톤 */
+.bc-skeleton {
+  background:var(--sur); border:1px solid var(--brd); border-radius:var(--r); overflow:hidden;
+}
+.bc-skel-thumb { width:100%; padding-bottom:56.25%; background:var(--sur3); animation:skelshim 1.5s ease infinite; background-size:200% 100%; background-image:linear-gradient(90deg,var(--sur3) 25%,var(--sur2) 50%,var(--sur3) 75%) }
+@keyframes skelshim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.bc-skel-info { padding:9px 10px }
+.bc-skel-line { height:10px; background:var(--sur3); border-radius:3px; margin-bottom:6px; animation:skelshim 1.5s ease infinite; background-size:200% 100%; background-image:linear-gradient(90deg,var(--sur3) 25%,var(--sur2) 50%,var(--sur3) 75%) }
+
+footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font-family:'DM Mono',monospace; border-top:1px solid var(--brd); letter-spacing:.04em }
+
+@media(max-width:600px) {
+  header { padding:0 14px; height:52px } .clk{display:none}
+  .sec-nav { padding:12px 14px 0 }
+  .rnav { padding:10px 14px 0 }
+  .main { padding:12px 14px 50px }
+  .cgrid { grid-template-columns:1fr; gap:10px }
+  .bc-grid { grid-template-columns:repeat(2,1fr); gap:8px }
 }
 </style>
 </head>
@@ -163,148 +267,174 @@ footer{text-align:center;padding:20px;font-size:10px;color:var(--mut);font-famil
   </div>
 </header>
 
-<nav class="rnav">
-  <button class="rbtn on" data-r="all">🌏 전체</button>
-  <button class="rbtn" data-r="seoul">🇰🇷 서울</button>
-  <button class="rbtn" data-r="shibuya">🗼 시부야</button>
-  <button class="rbtn" data-r="tokyo">🏙️ 도쿄</button>
-  <button class="rbtn" data-r="hokkaido">⛄ 홋카이도</button>
+<!-- 섹션 탭 -->
+<nav class="sec-nav">
+  <button class="sec-btn on" data-sec="cctv" onclick="switchSection('cctv')">
+    CCTV <span class="sec-badge">11</span>
+  </button>
+  <button class="sec-btn" data-sec="broadcast" onclick="switchSection('broadcast')">
+    BROADCAST <span class="sec-badge" id="bc-live-cnt">—</span>
+  </button>
 </nav>
 
-<main class="main" id="grid"></main>
-<footer>CYH VISION &nbsp;·&nbsp; 실시간 도시 뷰어 &nbsp;·&nbsp; 미세먼지 · 날씨 · 일조량을 눈으로 확인</footer>
+<!-- ════════════ CCTV 섹션 ════════════ -->
+<div id="section-cctv" class="section show">
+  <nav class="rnav">
+    <button class="rbtn on" data-r="all">🌏 전체</button>
+    <button class="rbtn" data-r="seoul">🇰🇷 서울</button>
+    <button class="rbtn" data-r="shibuya">🗼 시부야</button>
+    <button class="rbtn" data-r="tokyo">🏙️ 도쿄</button>
+    <button class="rbtn" data-r="hokkaido">⛄ 홋카이도</button>
+  </nav>
+  <main class="main" id="cctv-grid"></main>
+</div>
+
+<!-- ════════════ BROADCAST 섹션 ════════════ -->
+<div id="section-broadcast" class="section">
+  <main class="main" id="bc-main">
+    <!-- JS로 렌더 -->
+  </main>
+</div>
+
+<footer>CYH VISION &nbsp;·&nbsp; 실시간 도시 뷰어 + 방송 대시보드</footer>
 
 <script>
-// ══════════════════════════════════════════════════════
-//  CAMS — sakuralivecams.com 검증 + 본인 직접 확인 ID만 수록
-//  ✅ = sakuralivecams.com 썸네일로 검증된 ID
-//  👤 = 본인이 직접 라이브 확인
-// ══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  CCTV 데이터
+// ═══════════════════════════════════════════════════
 const CAMS = [
-  // ── 서울 ─────────────────────────────────────────────
-  {id:'s1',r:'seoul',
-   name:'한강 · 서울',loc:'서울',
-   vid:'-JhoMGoAfFc', // 👤
-   desc:'한강 실시간 4K 라이브캠'},
-
-  // ── 시부야 ────────────────────────────────────────────
-  {id:'b1',r:'shibuya',
-   name:'시부야 스크램블 크로싱',loc:'도쿄 시부야구',
-   vid:'8H3nRCFVR6Y', // 👤✅
-   desc:'スクランブル交差点 · 24h'},
-  {id:'b2',r:'shibuya',
-   name:'시부야 크로싱 (앵글2)',loc:'도쿄 시부야구',
-   vid:'tujkoXI8rWM', // ✅ sakuralivecams
-   desc:'Shibuya Crossing · 다른 앵글'},
-  {id:'b3',r:'shibuya',
-   name:'시부야 거리 뷰',loc:'도쿄 시부야구',
-   vid:'f50R4vDlCmA', // ✅ sakuralivecams
-   desc:'Tokyo Shibuya · 도심 거리'},
-
-  // ── 도쿄 ─────────────────────────────────────────────
-  {id:'t1',r:'tokyo',
-   name:'도쿄 스카이라인',loc:'도쿄',
-   vid:'_k-5U7IeK8g', // 👤✅
-   desc:'Tokyo Skyline · 파노라마'},
-  {id:'t2',r:'tokyo',
-   name:'신주쿠',loc:'도쿄 신주쿠구',
-   vid:'6dp-bvQ7RWo', // ✅ sakuralivecams
-   desc:'Shinjuku · 네온 도심'},
-  {id:'t3',r:'tokyo',
-   name:'가부키초',loc:'도쿄 신주쿠구',
-   vid:'gFRtAAmiFbE', // ✅ sakuralivecams
-   desc:'歌舞伎町 · 가부키초 24h'},
-  {id:'t4',r:'tokyo',
-   name:'도쿄타워 & 철도',loc:'도쿄 미나토구',
-   vid:'EmXsW-g6Ni8', // ✅ sakuralivecams
-   desc:'Tokyo Tower · 철도 뷰'},
-  {id:'t5',r:'tokyo',
-   name:'센소지 · 아사쿠사',loc:'도쿄 다이토구',
-   vid:'HjRZNBm1kms', // ✅ sakuralivecams
-   desc:'浅草寺 · 가미나리몬'},
-
-  // ── 홋카이도 ──────────────────────────────────────────
-  {id:'h1',r:'hokkaido',
-   name:'삿포로역',loc:'홋카이도 삿포로시',
-   vid:'O7aL3u5n1gQ', // ✅ sakuralivecams
-   desc:'JR 삿포로역 · 적설 · 날씨'},
-  {id:'h2',r:'hokkaido',
-   name:'홋카이도 라이브',loc:'홋카이도',
-   vid:'kfIQBC0hrII', // 👤
-   desc:'北海道 실시간 뷰'},
+  {id:'s1',r:'seoul',name:'한강 · 서울',loc:'서울',vid:'-JhoMGoAfFc',desc:'한강 실시간 4K'},
+  {id:'b1',r:'shibuya',name:'시부야 스크램블 크로싱',loc:'도쿄 시부야구',vid:'8H3nRCFVR6Y',desc:'スクランブル交差点 · 24h'},
+  {id:'b2',r:'shibuya',name:'시부야 크로싱 (앵글2)',loc:'도쿄 시부야구',vid:'tujkoXI8rWM',desc:'Shibuya Crossing · 다른 앵글'},
+  {id:'b3',r:'shibuya',name:'시부야 거리 뷰',loc:'도쿄 시부야구',vid:'f50R4vDlCmA',desc:'Tokyo Shibuya · 도심 거리'},
+  {id:'t1',r:'tokyo',name:'도쿄 스카이라인',loc:'도쿄',vid:'_k-5U7IeK8g',desc:'Tokyo Skyline · 파노라마'},
+  {id:'t2',r:'tokyo',name:'신주쿠',loc:'도쿄 신주쿠구',vid:'6dp-bvQ7RWo',desc:'Shinjuku · 네온 도심'},
+  {id:'t3',r:'tokyo',name:'가부키초',loc:'도쿄 신주쿠구',vid:'gFRtAAmiFbE',desc:'歌舞伎町 · 24h'},
+  {id:'t4',r:'tokyo',name:'도쿄타워 & 철도',loc:'도쿄 미나토구',vid:'EmXsW-g6Ni8',desc:'Tokyo Tower · 철도 뷰'},
+  {id:'t5',r:'tokyo',name:'센소지 · 아사쿠사',loc:'도쿄 다이토구',vid:'HjRZNBm1kms',desc:'浅草寺 · 가미나리몬'},
+  {id:'h1',r:'hokkaido',name:'삿포로역',loc:'홋카이도 삿포로시',vid:'O7aL3u5n1gQ',desc:'JR 삿포로역 · 적설 · 날씨'},
+  {id:'h2',r:'hokkaido',name:'홋카이도 라이브',loc:'홋카이도',vid:'kfIQBC0hrII',desc:'北海道 실시간 뷰'},
 ];
-
 const REGIONS=[
-  {id:'seoul',   label:'🇰🇷 서울',    sub:'Seoul, South Korea'},
-  {id:'shibuya', label:'🗼 시부야',    sub:'Shibuya, Tokyo'},
-  {id:'tokyo',   label:'🏙️ 도쿄',    sub:'Tokyo, Japan'},
-  {id:'hokkaido',label:'⛄ 홋카이도', sub:'Hokkaido, Japan'},
+  {id:'seoul',label:'🇰🇷 서울',sub:'Seoul, South Korea'},
+  {id:'shibuya',label:'🗼 시부야',sub:'Shibuya, Tokyo'},
+  {id:'tokyo',label:'🏙️ 도쿄',sub:'Tokyo, Japan'},
+  {id:'hokkaido',label:'⛄ 홋카이도',sub:'Hokkaido, Japan'},
 ];
 
-// ── 편집 오버레이 ────────────────────────────────────
-function openEdit(camId){
-  document.getElementById('eo-'+camId)?.classList.add('show');
-  const inp=document.getElementById('ei-'+camId);
-  const cam=CAMS.find(c=>c.id===camId);
-  if(inp&&cam){inp.value='https://www.youtube.com/watch?v='+cam.vid;inp.select();}
-}
-function closeEdit(camId){
-  document.getElementById('eo-'+camId)?.classList.remove('show');
-}
-function applyEdit(camId){
-  let val=(document.getElementById('ei-'+camId)?.value||'').trim();
-  const m=val.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-  if(m)val=m[1];
-  if(!/^[A-Za-z0-9_-]{11}$/.test(val)){alert('올바른 YouTube Video ID가 아닙니다');return;}
-  const cam=CAMS.find(c=>c.id===camId);
-  if(cam)cam.vid=val;
-  closeEdit(camId);
-  // iframe 교체
-  const frame=document.getElementById('frame-'+camId);
-  if(frame){
-    frame.classList.remove('loaded');
-    const iframe=frame.querySelector('iframe');
-    if(iframe)iframe.src=`https://www.youtube.com/embed/${val}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`;
+// ═══════════════════════════════════════════════════
+//  BROADCAST 데이터
+// ═══════════════════════════════════════════════════
+const SOOP_STREAMERS = [
+  {id:'soop-wak',   name:'우왁굳',    soopId:'ecvhao',   emoji:'👃', group:'왁타버스'},
+  {id:'soop-ine',   name:'아이네',   soopId:'inehine',   emoji:'💜', group:'이세돌'},
+  {id:'soop-jing',  name:'징버거',   soopId:'jingburger1', emoji:'💛', group:'이세돌'},
+  {id:'soop-lilpa', name:'릴파',     soopId:'lilpaaaaaa', emoji:'💙', group:'이세돌'},
+  {id:'soop-jurr',  name:'주르르',   soopId:'cotton__1',  emoji:'🩷', group:'이세돌'},
+  {id:'soop-gosegu',name:'고세구',   soopId:'gosegu',     emoji:'🩵', group:'이세돌'},
+  {id:'soop-vichan',name:'비챤',     soopId:'viichan6',   emoji:'💚', group:'이세돌'},
+  {id:'soop-mygom', name:'마이곰이', soopId:'mygomiee',   emoji:'🐻', group:''},
+];
+
+const CHZZK_STREAMERS = [
+  // ── 개인 스트리머 ✅ ────────────────────────────────
+  {id:'chzzk-woop',    name:'웁',             chzzkId:'34ea2a834c0022212290c26ac5e170a1', emoji:'🐣'},
+  {id:'chzzk-ida',     name:'이다의게임방송', chzzkId:'0076a519f147ee9fd0959bf02f9571ca', emoji:'🎮'},
+  {id:'chzzk-tamtam',  name:'탬탬버린',       chzzkId:'a7e175625fdea5a7d98428302b7aa57f', emoji:'🥁'},
+  {id:'chzzk-dduddi',  name:'김뚜띠',         chzzkId:'2eee29ce69664154d8bc478825941259', emoji:'🍀'},
+  {id:'chzzk-rena',    name:'달콤레나',       chzzkId:'a67b328bcc8eea4451ccfa754bc19ae1', emoji:'🍬'},
+  {id:'chzzk-gangji',  name:'강지',           chzzkId:'b5ed5db484d04faf4d150aedd362f34b', emoji:'🌸'},
+  {id:'chzzk-joinyang',name:'조이냥',         chzzkId:'a9983d950a0ba4471b3d60bb9c5e0dd7', emoji:'🐱'},
+
+  // ── 스텔라이브 전원 (stellive.me 공식 사이트 검증 ✅) ──
+  // 1기 Everys
+  {id:'chzzk-uni',   name:'아야츠노 유니',  chzzkId:'45e71a76e949e16a34764deb962f9d9f', emoji:'⚡', group:'스텔라이브 1기'},
+  {id:'chzzk-huya',  name:'사키하네 후야',  chzzkId:'36ddb9bb4f17593b60f1b63cec86611d', emoji:'🌙', group:'스텔라이브 1기'},
+  // 2기 Universe
+  {id:'chzzk-hina',  name:'시라유키 히나',  chzzkId:'b044e3a3b9259246bc92e863e7d3f3b8', emoji:'❄️', group:'스텔라이브 2기'},
+  {id:'chzzk-mashiro',name:'네네코 마시로', chzzkId:'4515b179f86b67b4981e16190817c580', emoji:'🧇', group:'스텔라이브 2기'},
+  {id:'chzzk-lize',  name:'아카네 리제',    chzzkId:'4325b1d5bbc321fad3042306646e2e50', emoji:'🍷', group:'스텔라이브 2기'},
+  {id:'chzzk-tabi',  name:'아라하시 타비',  chzzkId:'a6c4ddb09cdb160478996007bff35296', emoji:'🌊', group:'스텔라이브 2기'},
+  // 3기 Cliché
+  {id:'chzzk-shibuki',name:'텐코 시부키',   chzzkId:'64d76089fba26b180d9c9e48a32600d9', emoji:'⛩️', group:'스텔라이브 3기'},
+  {id:'chzzk-rin',   name:'아오쿠모 린',    chzzkId:'516937b5f85cbf2249ce31b0ad046b0f', emoji:'☁️', group:'스텔라이브 3기'},
+  {id:'chzzk-nana',  name:'하나코 나나',    chzzkId:'4d812b586ff63f8a2946e64fa860bbf5', emoji:'🔫', group:'스텔라이브 3기'},
+  {id:'chzzk-riko',  name:'유즈하 리코',    chzzkId:'8fd39bb8de623317de90654718638b10', emoji:'⚔️', group:'스텔라이브 3기'},
+];
+
+// ═══════════════════════════════════════════════════
+//  섹션 전환
+// ═══════════════════════════════════════════════════
+function switchSection(sec) {
+  document.querySelectorAll('.sec-btn').forEach(b => b.classList.toggle('on', b.dataset.sec === sec));
+  document.querySelectorAll('.section').forEach(s => s.classList.toggle('show', s.id === 'section-'+sec));
+  if (sec === 'broadcast' && !window._bcLoaded) {
+    window._bcLoaded = true;
+    renderBroadcast();
+    loadAllBroadcastStatus();
+  }
+  if (window._fbDb && window._fbUser) {
+    const { ref, set } = window._fbModules || {};
+    // Firebase 저장은 module scope에서만 가능하므로 이벤트로 처리
+    document.dispatchEvent(new CustomEvent('saveSection', {detail: sec}));
   }
 }
+// Firebase module에서 이벤트 처리
+document.addEventListener('saveSection', e => {
+  if (window._fbUser && window._fbDb) {
+    import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js").then(({ref,set}) => {
+      set(ref(window._fbDb, `livescope/lastSection/${window._fbUser.uid}`), e.detail);
+    });
+  }
+});
 
-// ── 렌더 ─────────────────────────────────────────────
-function renderGrid(){
-  const grid=document.getElementById('grid');
+// ═══════════════════════════════════════════════════
+//  CCTV 렌더
+// ═══════════════════════════════════════════════════
+function openEdit(id){
+  document.getElementById('eo-'+id)?.classList.add('show');
+  const c=CAMS.find(c=>c.id===id);
+  const inp=document.getElementById('ei-'+id);
+  if(inp&&c){inp.value='https://www.youtube.com/watch?v='+c.vid;inp.select();}
+}
+function closeEdit(id){document.getElementById('eo-'+id)?.classList.remove('show')}
+function applyEdit(id){
+  let v=(document.getElementById('ei-'+id)?.value||'').trim();
+  const m=v.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  if(m)v=m[1];
+  if(!/^[A-Za-z0-9_-]{11}$/.test(v)){alert('올바른 YouTube Video ID가 아닙니다');return;}
+  const c=CAMS.find(c=>c.id===id);if(c)c.vid=v;
+  closeEdit(id);
+  const frame=document.getElementById('frame-'+id);
+  if(frame){frame.classList.remove('loaded');const iframe=frame.querySelector('iframe');if(iframe)iframe.src=`https://www.youtube.com/embed/${v}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`;}
+}
+
+function renderCCTV(){
+  const grid=document.getElementById('cctv-grid');
   grid.innerHTML='';
   REGIONS.forEach(reg=>{
     const cams=CAMS.filter(c=>c.r===reg.id);
     const sec=document.createElement('div');
-    sec.className='rblock show';
-    sec.id='b-'+reg.id;
+    sec.className='rblock show';sec.id='b-'+reg.id;
     sec.innerHTML=`
-      <div class="bhead">
-        <span class="btitle">${reg.label}</span>
-        <span class="bsub">${reg.sub}</span>
-      </div>
+      <div class="bhead"><span class="btitle">${reg.label}</span><span class="bsub">${reg.sub}</span></div>
       <div class="cgrid">
         ${cams.map(cam=>`
           <div class="card" id="card-${cam.id}">
             <div class="ctop">
-              <div class="ctop-left">
-                <div class="cname">${cam.name}</div>
-                <div class="cloc">${cam.loc}</div>
-              </div>
+              <div class="ctop-left"><div class="cname">${cam.name}</div><div class="cloc">${cam.loc}</div></div>
               <div class="ctop-right">
-                <button class="edit-btn" onclick="openEdit('${cam.id}')" title="영상 URL 변경">✎ URL</button>
+                <button class="edit-btn" onclick="openEdit('${cam.id}')">✎ URL</button>
                 <div class="lstatus"><div class="ld2"></div>LIVE</div>
               </div>
             </div>
             <div class="frame" id="frame-${cam.id}">
               <div class="shimmer"></div>
-              <iframe
-                src="https://www.youtube.com/embed/${cam.vid}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowfullscreen
-                onload="document.getElementById('frame-${cam.id}').classList.add('loaded')"
-              ></iframe>
+              <iframe src="https://www.youtube.com/embed/${cam.vid}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1"
+                allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen
+                onload="document.getElementById('frame-${cam.id}').classList.add('loaded')"></iframe>
               <div class="edit-overlay" id="eo-${cam.id}">
-                <label>YouTube URL 또는 Video ID 붙여넣기<br><span style="color:#444;font-size:9px">예: youtube.com/watch?v=XXXXXXXXXXX</span></label>
+                <label>YouTube URL 또는 Video ID<br><span style="color:#444;font-size:9px">youtube.com/watch?v=XXXXXXXXXXX</span></label>
                 <input id="ei-${cam.id}" type="text" placeholder="URL 또는 11자리 ID"
                   onkeydown="if(event.key==='Enter')applyEdit('${cam.id}');if(event.key==='Escape')closeEdit('${cam.id}')">
                 <div class="edit-btns">
@@ -315,17 +445,15 @@ function renderGrid(){
             </div>
             <div class="cfoot">
               <span class="cfoot-txt">${cam.desc}</span>
-              <button class="fav-btn" data-camid="${cam.id}"
-                onclick="window.toggleFav(event,'${cam.id}','${cam.name}')">☆</button>
+              <button class="fav-btn" data-camid="${cam.id}" onclick="window.toggleFav(event,'${cam.id}','${cam.name}')">☆</button>
             </div>
-          </div>
-        `).join('')}
+          </div>`).join('')}
       </div>`;
     grid.appendChild(sec);
   });
 }
 
-// ── 탭 ───────────────────────────────────────────────
+// CCTV 탭 전환
 document.querySelectorAll('.rbtn').forEach(b=>{
   b.addEventListener('click',function(){
     document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('on'));
@@ -338,7 +466,144 @@ document.querySelectorAll('.rbtn').forEach(b=>{
   });
 });
 
-// ── 시계 ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//  BROADCAST 렌더
+// ═══════════════════════════════════════════════════
+function renderBroadcast(){
+  const main=document.getElementById('bc-main');
+  main.innerHTML=`
+    <!-- SOOP 블록 -->
+    <div class="platform-block">
+      <div class="platform-header">
+        <span class="platform-logo soop">SOOP</span>
+        <span class="platform-desc">숲 — 왁타버스 · 이세돌 · 마이곰이</span>
+      </div>
+      <div class="bc-grid" id="soop-grid">
+        ${SOOP_STREAMERS.map(s=>skeletonCard(s.id)).join('')}
+      </div>
+    </div>
+    <!-- 치지직 블록 -->
+    <div class="platform-block">
+      <div class="platform-header">
+        <span class="platform-logo chzzk">치지직</span>
+        <span class="platform-desc">CHZZK — 이다의게임방송 · 웁 · 탬탬버린 · 김뚜띠 · 강지 · 스텔라이브</span>
+      </div>
+      <div class="bc-grid" id="chzzk-grid">
+        ${CHZZK_STREAMERS.map(s=>skeletonCard(s.id)).join('')}
+      </div>
+    </div>`;
+}
+
+function skeletonCard(id){
+  return `<div class="bc-skeleton" id="skel-${id}">
+    <div class="bc-skel-thumb"></div>
+    <div class="bc-skel-info">
+      <div class="bc-skel-line" style="width:60%"></div>
+      <div class="bc-skel-line" style="width:40%"></div>
+    </div>
+  </div>`;
+}
+
+function renderBcCard(streamer, isLive, data, platform) {
+  const el = document.getElementById('skel-' + streamer.id);
+  if (!el) return;
+
+  const url = platform === 'soop'
+    ? `https://play.sooplive.co.kr/${streamer.soopId}`
+    : `https://chzzk.naver.com/live/${streamer.chzzkId}`;
+
+  const thumbUrl = isLive && data?.liveImageUrl
+    ? data.liveImageUrl.replace('{type}', '480')
+    : null;
+
+  const liveClass = isLive ? `is-live ${platform}-live` : '';
+  const badgeClass = platform === 'soop' ? 'soop-badge' : 'chzzk-badge';
+  const viewers = isLive && data?.concurrentUserCount
+    ? fmtNum(data.concurrentUserCount) : null;
+  const title = isLive && (data?.liveTitle || data?.title)
+    ? (data.liveTitle || data.title) : null;
+
+  el.outerHTML = `
+    <a class="bc-card ${liveClass}" href="${url}" target="_blank" rel="noopener" id="bc-${streamer.id}">
+      <div class="bc-thumb">
+        ${thumbUrl
+          ? `<img src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="bc-thumb-placeholder">${streamer.emoji}</div>`
+        }
+        <span class="bc-live-badge ${badgeClass}">● LIVE</span>
+      </div>
+      <div class="bc-info">
+        <div class="bc-name">${streamer.emoji} ${streamer.name}</div>
+        <div class="bc-platform-tag">${platform === 'soop' ? 'SOOP' : 'CHZZK'}${streamer.group ? ' · ' + streamer.group : ''}</div>
+        <div class="bc-title ${isLive ? 'live-now' : ''}">${title || (isLive ? '방송 중' : '오프라인')}</div>
+        <div class="bc-status ${isLive ? 'on' : ''}">
+          <div class="bc-status-dot"></div>
+          <span class="bc-status-txt">${isLive ? '방송 중' : '방송 없음'}</span>
+          ${viewers ? `<span class="bc-viewers">👁 ${viewers}</span>` : ''}
+        </div>
+      </div>
+    </a>`;
+}
+
+function fmtNum(n){
+  if(n>=10000)return (n/10000).toFixed(1)+'만';
+  if(n>=1000)return (n/1000).toFixed(1)+'K';
+  return String(n);
+}
+
+// ── SOOP 상태 조회 ──────────────────────────────
+// SOOP 공개 API: live.sooplive.co.kr/afreeca/player_live_api.php
+// CORS 문제로 직접 호출 불가 → play.sooplive.co.kr 페이지 HEAD로 방송 상태 간접 확인
+// 대신 SOOP API를 프록시 없이 사용할 수 있는 방법: 없음
+// → 방송 상태는 알 수 없으므로 "바로가기" 카드로만 표시
+async function loadSoopStatus() {
+  for (const s of SOOP_STREAMERS) {
+    // SOOP은 CORS 제한으로 API 직접 호출 불가 → 오프라인 카드로 표시 + 클릭 시 이동
+    renderBcCard(s, false, null, 'soop');
+  }
+}
+
+// ── CHZZK 상태 조회 ─────────────────────────────
+// 치지직 공개 API: api.chzzk.naver.com/service/v2/channels/{id}/live-detail
+async function loadChzzkStatus() {
+  let liveCount = 0;
+  const results = await Promise.allSettled(
+    CHZZK_STREAMERS.map(async s => {
+      try {
+        const res = await fetch(
+          `https://api.chzzk.naver.com/service/v2/channels/${s.chzzkId}/live-detail`,
+          { headers: { 'User-Agent': 'Mozilla/5.0' } }
+        );
+        if (!res.ok) return { s, isLive: false, data: null };
+        const json = await res.json();
+        const content = json?.content;
+        const isLive = content?.status === 'OPEN';
+        return { s, isLive, data: content };
+      } catch {
+        return { s, isLive: false, data: null };
+      }
+    })
+  );
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      const { s, isLive, data } = r.value;
+      if (isLive) liveCount++;
+      renderBcCard(s, isLive, data, 'chzzk');
+    }
+  });
+  return liveCount;
+}
+
+async function loadAllBroadcastStatus() {
+  const [_, chzzkLive] = await Promise.all([loadSoopStatus(), loadChzzkStatus()]);
+  // 배지 업데이트
+  const badge = document.getElementById('bc-live-cnt');
+  if (badge) badge.textContent = chzzkLive > 0 ? `${chzzkLive} LIVE` : '—';
+}
+
+// ═══════════════════════════════════════════════════
+//  KST 시계
+// ═══════════════════════════════════════════════════
 function tick(){
   const d=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
   const p=n=>String(n).padStart(2,'0');
@@ -346,7 +611,11 @@ function tick(){
 }
 tick();setInterval(tick,1000);
 
-renderGrid();
+// ═══════════════════════════════════════════════════
+//  초기화
+// ═══════════════════════════════════════════════════
+renderCCTV();
+window._bcLoaded = false;
 </script>
 </body>
 </html>
