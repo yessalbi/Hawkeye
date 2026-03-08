@@ -564,19 +564,23 @@ async function loadSoopStatus() {
 }
 
 // ── CHZZK 상태 조회 ─────────────────────────────
-// 치지직 공개 API: api.chzzk.naver.com/service/v2/channels/{id}/live-detail
+// 치지직 API는 CORS 미허용 → allorigins.win 프록시 경유
+async function fetchChzzk(chzzkId) {
+  const apiUrl = `https://api.chzzk.naver.com/service/v2/channels/${chzzkId}/live-detail`;
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('proxy error');
+  const outer = await res.json();
+  const json = JSON.parse(outer.contents);
+  return json?.content ?? null;
+}
+
 async function loadChzzkStatus() {
   let liveCount = 0;
   const results = await Promise.allSettled(
     CHZZK_STREAMERS.map(async s => {
       try {
-        const res = await fetch(
-          `https://api.chzzk.naver.com/service/v2/channels/${s.chzzkId}/live-detail`,
-          { headers: { 'User-Agent': 'Mozilla/5.0' } }
-        );
-        if (!res.ok) return { s, isLive: false, data: null };
-        const json = await res.json();
-        const content = json?.content;
+        const content = await fetchChzzk(s.chzzkId);
         const isLive = content?.status === 'OPEN';
         return { s, isLive, data: content };
       } catch {
