@@ -512,12 +512,15 @@ function renderBcCard(streamer, isLive, data, platform) {
     ? `https://play.sooplive.co.kr/${streamer.soopId}`
     : `https://chzzk.naver.com/live/${streamer.chzzkId}`;
 
-  const thumbUrl = isLive && data?.liveImageUrl
-    ? data.liveImageUrl.replace('{type}', '480')
+  // 썸네일: CHZZK={type}치환 필요, SOOP=직접 URL
+  const rawThumb = data?.liveImageUrl || null;
+  const thumbUrl = isLive && rawThumb
+    ? (platform === 'chzzk' ? rawThumb.replace('{type}', '480') : rawThumb)
     : null;
 
   const liveClass = isLive ? `is-live ${platform}-live` : '';
   const badgeClass = platform === 'soop' ? 'soop-badge' : 'chzzk-badge';
+  // viewers: CHZZK=concurrentUserCount, SOOP=concurrentUserCount(래핑)
   const viewers = isLive && data?.concurrentUserCount
     ? fmtNum(data.concurrentUserCount) : null;
   const title = isLive && (data?.liveTitle || data?.title)
@@ -551,27 +554,71 @@ function fmtNum(n){
   return String(n);
 }
 
+// ═══════════════════════════════════════════════════
+//  CORS 프록시 유틸 (corsproxy.io 우선, 실패 시 allorigins 폴백)
+// ═══════════════════════════════════════════════════
+async function proxyFetch(apiUrl) {
+  // 1순위: corsproxy.io (빠름, JSON 직접 반환)
+  try {
+    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const text = await res.text();
+      return JSON.parse(text);
+    }
+  } catch {}
+  // 2순위: allorigins.win (폴백)
+  const res2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`, { signal: AbortSignal.timeout(8000) });
+  if (!res2.ok) throw new Error('proxy failed');
+  const outer = await res2.json();
+  return JSON.parse(outer.contents);
+}
+
 // ── SOOP 상태 조회 ──────────────────────────────
-// SOOP 공개 API: live.sooplive.co.kr/afreeca/player_live_api.php
-// CORS 문제로 직접 호출 불가 → play.sooplive.co.kr 페이지 HEAD로 방송 상태 간접 확인
-// 대신 SOOP API를 프록시 없이 사용할 수 있는 방법: 없음
-// → 방송 상태는 알 수 없으므로 "바로가기" 카드로만 표시
-async function loadSoopStatus() {
-  for (const s of SOOP_STREAMERS) {
-    // SOOP은 CORS 제한으로 API 직접 호출 불가 → 오프라인 카드로 표시 + 클릭 시 이동
-    renderBcCard(s, false, null, 'soop');
+// 비공식 API: live.sooplive.co.kr/afreeca/player_live_api.php (POST)
+// 방송중이면 CHANNEL.RESULT=1, BNO(방송번호), THUMB 제공
+async function fetchSoop(soopId) {
+  const apiUrl = `https://live.sooplive.co.kr/afreeca/player_live_api.php?bjid=${soopId}`;
+  // POST body
+  const body = `bjid=${soopId}&mode=landing&player_type=html5&is_compression_str=0`;
+  // allorigins는 GET만 지원 → GET 파라미터로 상태 확인하는 엔드포인트 사용
+  const statusUrl = `https://api.sooplive.co.kr/api/get_station_status_simple?user_id=${soopId}`;
+  try {
+    const json = await proxyFetch(statusUrl);
+    // 응답: { user_id, is_live, broad_no, ... }
+    const isLive = json?.data?.is_live === 1 || json?.data?.is_live === '1';
+    const broadNo = json?.data?.broad_no;
+    const thumb = broadNo ? `https://liveimg.sooplive.co.kr/m/${broadNo}` : null;
+    const title = json?.data?.broad_title || null;
+    const viewers = json?.data?.current_sum_viewer || null;
+    return { isLive, thumb, title, viewers };
+  } catch {
+    return { isLive: false, thumb: null, title: null, viewers: null };
   }
 }
 
+async function loadSoopStatus() {
+  const results = await Promise.allSettled(
+    SOOP_STREAMERS.map(async s => {
+      const data = await fetchSoop(s.soopId);
+      return { s, ...data };
+    })
+  );
+  let liveCount = 0;
+  results.forEach(r => {
+    if (r.status === 'fulfilled') {
+      const { s, isLive, thumb, title, viewers } = r.value;
+      if (isLive) liveCount++;
+      renderBcCard(s, isLive, { liveImageUrl: thumb, liveTitle: title, concurrentUserCount: viewers }, 'soop');
+    }
+  });
+  return liveCount;
+}
+
 // ── CHZZK 상태 조회 ─────────────────────────────
-// 치지직 API는 CORS 미허용 → allorigins.win 프록시 경유
+// 치지직 공개 API: api.chzzk.naver.com/service/v2/channels/{id}/live-detail
 async function fetchChzzk(chzzkId) {
   const apiUrl = `https://api.chzzk.naver.com/service/v2/channels/${chzzkId}/live-detail`;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error('proxy error');
-  const outer = await res.json();
-  const json = JSON.parse(outer.contents);
+  const json = await proxyFetch(apiUrl);
   return json?.content ?? null;
 }
 
@@ -599,10 +646,10 @@ async function loadChzzkStatus() {
 }
 
 async function loadAllBroadcastStatus() {
-  const [_, chzzkLive] = await Promise.all([loadSoopStatus(), loadChzzkStatus()]);
-  // 배지 업데이트
+  const [soopLive, chzzkLive] = await Promise.all([loadSoopStatus(), loadChzzkStatus()]);
+  const total = soopLive + chzzkLive;
   const badge = document.getElementById('bc-live-cnt');
-  if (badge) badge.textContent = chzzkLive > 0 ? `${chzzkLive} LIVE` : '—';
+  if (badge) badge.textContent = total > 0 ? `${total} LIVE` : '—';
 }
 
 // ═══════════════════════════════════════════════════
