@@ -122,9 +122,27 @@ header {
 .btitle { font-size:15px; font-weight:500 }
 .bsub { font-family:'DM Mono',monospace; font-size:10px; color:var(--mut) }
 
-.cgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; margin-bottom:24px }
-@media(min-width:1400px){.cgrid{grid-template-columns:repeat(5,1fr)}}
-@media(min-width:1000px) and (max-width:1399px){.cgrid{grid-template-columns:repeat(4,1fr)}}
+/* 통합 그리드: 지역 구분 없이 하나의 그리드로 */
+#cctv-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:10px;
+  margin-bottom:24px;
+}
+@media(min-width:1600px){#cctv-grid{grid-template-columns:repeat(5,1fr)}}
+@media(min-width:1200px) and (max-width:1599px){#cctv-grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:800px) and (max-width:1199px){#cctv-grid{grid-template-columns:repeat(3,1fr)}}
+/* 지역 헤더: 그리드 전체 너비 차지 */
+.rgrouphead {
+  grid-column:1/-1;
+  display:flex; align-items:baseline; gap:8px;
+  padding:14px 0 6px; border-bottom:1px solid var(--brd);
+  margin-bottom:2px;
+}
+.rgrouphead:first-child { padding-top:4px }
+.rgrouphead-title { font-size:13px; font-weight:500 }
+.rgrouphead-sub { font-family:'DM Mono',monospace; font-size:9.5px; color:var(--mut) }
+.cgrid { display:contents }
 
 /* ── CCTV CARD ── */
 .card { background:var(--sur); border-radius:var(--r); overflow:hidden; border:1px solid var(--brd); box-shadow:0 1px 10px rgba(0,0,0,.05); transition:box-shadow .2s,transform .2s }
@@ -251,7 +269,7 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
   .sec-nav { padding:12px 14px 0 }
   .rnav { padding:10px 14px 0 }
   .main { padding:12px 14px 50px }
-  .cgrid { grid-template-columns:1fr; gap:10px }
+  #cctv-grid { grid-template-columns:1fr; gap:8px }
   .bc-grid { grid-template-columns:repeat(2,1fr); gap:8px }
 }
 
@@ -422,7 +440,7 @@ const CAMS = [
   {id:'h1',r:'hokkaido',name:'삿포로역',loc:'홋카이도 삿포로시',vid:'O7aL3u5n1gQ',desc:'JR 삿포로역 · 적설 · 날씨'},
   {id:'h2',r:'hokkaido',name:'홋카이도 라이브',loc:'홋카이도',vid:'kfIQBC0hrII',desc:'北海道 실시간 뷰'},
   // 오사카
-  {id:'o1',r:'osaka',name:'도톤보리',loc:'오사카 주오구',vid:'Nbs_WkWTD7M',desc:'道頓堀 · 오사카 네온 명소'},
+  {id:'o1',r:'osaka',name:'도톤보리',loc:'오사카 주오구',vid:'bzn2QWfOLFY',desc:'道頓堀 · 오사카 네온 명소'},
   // 교토
   {id:'k1',r:'kyoto',name:'교토 라이브',loc:'교토',vid:'wuC8wRvXock',desc:'京都 · 고도의 풍경'},
   // 후지산
@@ -530,59 +548,80 @@ function applyEdit(id){
   if(frame){frame.classList.remove('loaded');const iframe=frame.querySelector('iframe');if(iframe)iframe.src=`https://www.youtube.com/embed/${v}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`;}
 }
 
+function camCard(cam) {
+  return `<div class="card" id="card-${cam.id}" data-r="${cam.r}">
+    <div class="ctop">
+      <div class="ctop-left"><div class="cname">${cam.name}</div><div class="cloc">${cam.loc}</div></div>
+      <div class="ctop-right">
+        <button class="edit-btn" onclick="openEdit('${cam.id}')">✎ URL</button>
+        <div class="lstatus"><div class="ld2"></div>LIVE</div>
+      </div>
+    </div>
+    <div class="frame" id="frame-${cam.id}">
+      <div class="shimmer"></div>
+      <iframe src="https://www.youtube.com/embed/${cam.vid}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1"
+        allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen
+        onload="document.getElementById('frame-${cam.id}').classList.add('loaded')"></iframe>
+      <div class="edit-overlay" id="eo-${cam.id}">
+        <label>YouTube URL 또는 Video ID<br><span style="color:#999;font-size:9px">youtube.com/watch?v=XXXXXXXXXXX</span></label>
+        <input id="ei-${cam.id}" type="text" placeholder="URL 또는 11자리 ID"
+          onkeydown="if(event.key==='Enter')applyEdit('${cam.id}');if(event.key==='Escape')closeEdit('${cam.id}')">
+        <div class="edit-btns">
+          <button class="btn-ok" onclick="applyEdit('${cam.id}')">적용</button>
+          <button class="btn-cx" onclick="closeEdit('${cam.id}')">취소</button>
+        </div>
+      </div>
+    </div>
+    <div class="cfoot">
+      <span class="cfoot-txt">${cam.desc}</span>
+      <button class="fav-btn" data-camid="${cam.id}" onclick="window.toggleFav(event,'${cam.id}','${cam.name}')">☆</button>
+    </div>
+  </div>`;
+}
+
 function renderCCTV(){
   const grid=document.getElementById('cctv-grid');
   grid.innerHTML='';
+  // 통합 그리드: 지역 헤더 + 카드를 모두 grid 직속 자식으로
   REGIONS.forEach(reg=>{
     const cams=CAMS.filter(c=>c.r===reg.id);
-    const sec=document.createElement('div');
-    sec.className='rblock show';sec.id='b-'+reg.id;
-    sec.innerHTML=`
-      <div class="bhead"><span class="btitle">${reg.label}</span><span class="bsub">${reg.sub}</span></div>
-      <div class="cgrid">
-        ${cams.map(cam=>`
-          <div class="card" id="card-${cam.id}">
-            <div class="ctop">
-              <div class="ctop-left"><div class="cname">${cam.name}</div><div class="cloc">${cam.loc}</div></div>
-              <div class="ctop-right">
-                <button class="edit-btn" onclick="openEdit('${cam.id}')">✎ URL</button>
-                <div class="lstatus"><div class="ld2"></div>LIVE</div>
-              </div>
-            </div>
-            <div class="frame" id="frame-${cam.id}">
-              <div class="shimmer"></div>
-              <iframe src="https://www.youtube.com/embed/${cam.vid}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1"
-                allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen
-                onload="document.getElementById('frame-${cam.id}').classList.add('loaded')"></iframe>
-              <div class="edit-overlay" id="eo-${cam.id}">
-                <label>YouTube URL 또는 Video ID<br><span style="color:#444;font-size:9px">youtube.com/watch?v=XXXXXXXXXXX</span></label>
-                <input id="ei-${cam.id}" type="text" placeholder="URL 또는 11자리 ID"
-                  onkeydown="if(event.key==='Enter')applyEdit('${cam.id}');if(event.key==='Escape')closeEdit('${cam.id}')">
-                <div class="edit-btns">
-                  <button class="btn-ok" onclick="applyEdit('${cam.id}')">적용</button>
-                  <button class="btn-cx" onclick="closeEdit('${cam.id}')">취소</button>
-                </div>
-              </div>
-            </div>
-            <div class="cfoot">
-              <span class="cfoot-txt">${cam.desc}</span>
-              <button class="fav-btn" data-camid="${cam.id}" onclick="window.toggleFav(event,'${cam.id}','${cam.name}')">☆</button>
-            </div>
-          </div>`).join('')}
-      </div>`;
-    grid.appendChild(sec);
+    if(!cams.length) return;
+    // 지역 헤더 (grid-column:1/-1)
+    const head=document.createElement('div');
+    head.className='rgrouphead';
+    head.id='gh-'+reg.id;
+    head.innerHTML=`<span class="rgrouphead-title">${reg.label}</span><span class="rgrouphead-sub">${reg.sub}</span>`;
+    grid.appendChild(head);
+    // 카드들
+    cams.forEach(cam=>{
+      const div=document.createElement('div');
+      div.innerHTML=camCard(cam);
+      const card=div.firstElementChild;
+      card.dataset.r=reg.id;
+      grid.appendChild(card);
+    });
   });
 }
 
-// CCTV 탭 전환
+// CCTV 탭 필터 (data-r 속성으로 카드/헤더 show/hide)
 document.querySelectorAll('.rbtn').forEach(b=>{
   b.addEventListener('click',function(){
     document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('on'));
     this.classList.add('on');
     const r=this.dataset.r;
+    const grid=document.getElementById('cctv-grid');
+    if(!grid)return;
+    // 카드
+    grid.querySelectorAll('.card').forEach(card=>{
+      const show=(r==='all'||card.dataset.r===r);
+      card.style.display=show?'':'none';
+    });
+    // 지역 헤더
     REGIONS.forEach(reg=>{
-      const el=document.getElementById('b-'+reg.id);if(!el)return;
-      (r==='all'||r===reg.id)?el.classList.add('show'):el.classList.remove('show');
+      const head=document.getElementById('gh-'+reg.id);
+      if(!head)return;
+      const hasCams=(r==='all'||r===reg.id);
+      head.style.display=hasCams?'':'none';
     });
   });
 });
