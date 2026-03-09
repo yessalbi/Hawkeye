@@ -254,9 +254,108 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
   .cgrid { grid-template-columns:1fr; gap:10px }
   .bc-grid { grid-template-columns:repeat(2,1fr); gap:8px }
 }
+
+/* ── SPLASH ─────────────────────────────────── */
+#splash {
+  position:fixed; inset:0; z-index:9999;
+  background:#0c0c0a;
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity .5s ease, visibility .5s ease;
+}
+#splash.hidden { opacity:0; visibility:hidden; pointer-events:none }
+
+.splash-inner {
+  display:flex; flex-direction:column; align-items:center; gap:0;
+  width:320px;
+}
+
+.splash-logo {
+  font-family:'DM Mono',monospace; font-size:22px; letter-spacing:.2em;
+  color:#F5F4F0; display:flex; align-items:center; gap:10px;
+  margin-bottom:10px;
+}
+.splash-dot {
+  width:8px; height:8px; border-radius:50%; background:#E53E3E;
+  box-shadow:0 0 12px rgba(229,62,62,.8);
+  animation:pulse-r 1.5s ease-in-out infinite;
+}
+.splash-tagline {
+  font-family:'DM Mono',monospace; font-size:10px; color:#555;
+  letter-spacing:.08em; margin-bottom:40px;
+}
+
+.splash-tasks { width:100%; display:flex; flex-direction:column; gap:12px; margin-bottom:28px }
+.splash-task {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; border-radius:8px;
+  background:#161614; border:1px solid #222;
+  transition:border-color .3s, background .3s;
+}
+.splash-task.done { border-color:#2C6E49; background:#0f1f16 }
+.splash-task.done .task-spinner { display:none }
+.splash-task.done::before {
+  content:'✓'; width:16px; height:16px; font-size:11px; color:#2C6E49;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.splash-task.err { border-color:#4a1a1a; background:#1a0f0f }
+.splash-task.err .task-spinner { display:none }
+.splash-task.err::before {
+  content:'✕'; width:16px; height:16px; font-size:11px; color:#E53E3E;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+
+.task-spinner {
+  width:16px; height:16px; border-radius:50%; flex-shrink:0;
+  border:2px solid #333; border-top-color:#888;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.task-label { font-family:'DM Mono',monospace; font-size:11px; color:#aaa; flex:1 }
+.task-status { font-family:'DM Mono',monospace; font-size:10px; color:#555 }
+.splash-task.done .task-status { color:#2C6E49 }
+.splash-task.err .task-status { color:#E53E3E }
+
+.splash-bar-wrap {
+  width:100%; height:2px; background:#1a1a18; border-radius:2px; overflow:hidden;
+}
+.splash-bar {
+  height:100%; width:0%; background:linear-gradient(90deg,#2C6E49,#52b788);
+  border-radius:2px; transition:width .4s ease;
+}
+
 </style>
 </head>
 <body>
+
+<!-- ════════════ LOADING SCREEN ════════════ -->
+<div id="splash">
+  <div class="splash-inner">
+    <div class="splash-logo">
+      <div class="splash-dot"></div>
+      <span>CYH VISION</span>
+    </div>
+    <div class="splash-tagline">실시간 도시 뷰어 · 방송 대시보드</div>
+    <div class="splash-tasks">
+      <div class="splash-task" id="task-firebase">
+        <div class="task-spinner"></div>
+        <span class="task-label">Firebase 연결</span>
+        <span class="task-status">대기중</span>
+      </div>
+      <div class="splash-task" id="task-cctv">
+        <div class="task-spinner"></div>
+        <span class="task-label">CCTV 채널 로드</span>
+        <span class="task-status">대기중</span>
+      </div>
+      <div class="splash-task" id="task-broadcast">
+        <div class="task-spinner"></div>
+        <span class="task-label">방송 상태 조회</span>
+        <span class="task-status">대기중</span>
+      </div>
+    </div>
+    <div class="splash-bar-wrap"><div class="splash-bar" id="splash-bar"></div></div>
+  </div>
+</div>
 
 <header>
   <div class="logo"><div class="ldot"></div>CYH VISION</div>
@@ -389,11 +488,7 @@ document.addEventListener('saveSection', e => {
     });
   }
 });
-// 새로고침 시 hash로 탭 복원
-(function() {
-  const hash = location.hash.replace('#','');
-  if (hash === 'broadcast') switchSection('broadcast', true);
-})();
+// hash 복원은 init()에서 처리
 
 // ═══════════════════════════════════════════════════
 //  CCTV 렌더
@@ -655,10 +750,81 @@ function tick(){
 tick();setInterval(tick,1000);
 
 // ═══════════════════════════════════════════════════
-//  초기화
+//  로딩 화면 + 초기화
 // ═══════════════════════════════════════════════════
-renderCCTV();
-window._bcLoaded = false;
+function splashTask(id, status, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'splash-task ' + status;
+  el.querySelector('.task-status').textContent = text;
+}
+function splashProgress(pct) {
+  const bar = document.getElementById('splash-bar');
+  if (bar) bar.style.width = pct + '%';
+}
+function hideSplash() {
+  const s = document.getElementById('splash');
+  if (s) s.classList.add('hidden');
+  setTimeout(() => { if (s) s.remove(); }, 600);
+}
+
+async function init() {
+  // ── Firebase ───────────────────────
+  splashTask('task-firebase', '', '연결 중...');
+  splashProgress(10);
+  await new Promise(resolve => {
+    // Firebase auth 상태 변화 대기 (최대 4초)
+    let done = false;
+    const unsub = window._onFbReady ? window._onFbReady(resolve) : null;
+    // fallback: 이미 연결됐거나 4초 초과
+    const check = setInterval(() => {
+      if (window._fbUser !== null || window._fbUser === undefined) {
+        clearInterval(check);
+        if (!done) { done = true; resolve(); }
+      }
+    }, 100);
+    setTimeout(() => { clearInterval(check); if (!done) { done = true; resolve(); } }, 4000);
+  });
+  if (window._fbUser) {
+    splashTask('task-firebase', 'done', '연결됨');
+  } else {
+    splashTask('task-firebase', 'err', '오프라인');
+  }
+  splashProgress(33);
+
+  // ── CCTV ───────────────────────────
+  splashTask('task-cctv', '', '로드 중...');
+  await new Promise(r => setTimeout(r, 0));
+  renderCCTV();
+  window._bcLoaded = false;
+  // hash 복원
+  const hash = location.hash.replace('#','');
+  if (hash === 'broadcast') switchSection('broadcast', true);
+  splashTask('task-cctv', 'done', '완료 (' + (window._CAMS_COUNT || 11) + '개)');
+  splashProgress(55);
+
+  // ── Broadcast ─────────────────────
+  splashTask('task-broadcast', '', '조회 중...');
+  renderBroadcast();
+  window._bcLoaded = true;
+  let liveTotal = 0;
+  try {
+    const [s, c] = await Promise.all([loadSoopStatus(), loadChzzkStatus()]);
+    liveTotal = s + c;
+    const badge = document.getElementById('bc-live-cnt');
+    if (badge) badge.textContent = liveTotal > 0 ? (liveTotal + ' LIVE') : '—';
+    splashTask('task-broadcast', 'done', liveTotal > 0 ? (liveTotal + '명 방송중') : '방송 없음');
+  } catch(e) {
+    splashTask('task-broadcast', 'err', '조회 실패');
+  }
+  splashProgress(100);
+
+  // ── 완료 → 메인 표시 ──────────────
+  await new Promise(r => setTimeout(r, 600));
+  hideSplash();
+}
+
+init();
 </script>
 </body>
 </html>
