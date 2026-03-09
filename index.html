@@ -258,7 +258,7 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 /* ── SPLASH ─────────────────────────────────── */
 #splash {
   position:fixed; inset:0; z-index:9999;
-  background:#0c0c0a;
+  background:#F5F4F0;
   display:flex; align-items:center; justify-content:center;
   transition:opacity .5s ease, visibility .5s ease;
 }
@@ -271,7 +271,7 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 
 .splash-logo {
   font-family:'DM Mono',monospace; font-size:22px; letter-spacing:.2em;
-  color:#F5F4F0; display:flex; align-items:center; gap:10px;
+  color:#181816; display:flex; align-items:center; gap:10px;
   margin-bottom:10px;
 }
 .splash-dot {
@@ -280,7 +280,7 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
   animation:pulse-r 1.5s ease-in-out infinite;
 }
 .splash-tagline {
-  font-family:'DM Mono',monospace; font-size:10px; color:#555;
+  font-family:'DM Mono',monospace; font-size:10px; color:#87867E;
   letter-spacing:.08em; margin-bottom:40px;
 }
 
@@ -288,16 +288,16 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 .splash-task {
   display:flex; align-items:center; gap:10px;
   padding:10px 14px; border-radius:8px;
-  background:#161614; border:1px solid #222;
+  background:#FFFFFF; border:1px solid #E0DED7;
   transition:border-color .3s, background .3s;
 }
-.splash-task.done { border-color:#2C6E49; background:#0f1f16 }
+.splash-task.done { border-color:#2C6E49; background:#EAF4EE }
 .splash-task.done .task-spinner { display:none }
 .splash-task.done::before {
   content:'✓'; width:16px; height:16px; font-size:11px; color:#2C6E49;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
-.splash-task.err { border-color:#4a1a1a; background:#1a0f0f }
+.splash-task.err { border-color:#F5C6C6; background:#FEF2F2 }
 .splash-task.err .task-spinner { display:none }
 .splash-task.err::before {
   content:'✕'; width:16px; height:16px; font-size:11px; color:#E53E3E;
@@ -306,18 +306,18 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 
 .task-spinner {
   width:16px; height:16px; border-radius:50%; flex-shrink:0;
-  border:2px solid #333; border-top-color:#888;
+  border:2px solid #E0DED7; border-top-color:#87867E;
   animation:spin .8s linear infinite;
 }
 @keyframes spin { to{transform:rotate(360deg)} }
 
-.task-label { font-family:'DM Mono',monospace; font-size:11px; color:#aaa; flex:1 }
-.task-status { font-family:'DM Mono',monospace; font-size:10px; color:#555 }
+.task-label { font-family:'DM Mono',monospace; font-size:11px; color:#87867E; flex:1 }
+.task-status { font-family:'DM Mono',monospace; font-size:10px; color:#bbb }
 .splash-task.done .task-status { color:#2C6E49 }
 .splash-task.err .task-status { color:#E53E3E }
 
 .splash-bar-wrap {
-  width:100%; height:2px; background:#1a1a18; border-radius:2px; overflow:hidden;
+  width:100%; height:2px; background:#E0DED7; border-radius:2px; overflow:hidden;
 }
 .splash-bar {
   height:100%; width:0%; background:linear-gradient(90deg,#2C6E49,#52b788);
@@ -369,7 +369,7 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 <!-- 섹션 탭 -->
 <nav class="sec-nav">
   <button class="sec-btn on" data-sec="cctv" onclick="switchSection('cctv')">
-    CCTV <span class="sec-badge">11</span>
+    CCTV <span class="sec-badge">13</span>
   </button>
   <button class="sec-btn" data-sec="broadcast" onclick="switchSection('broadcast')">
     BROADCAST <span class="sec-badge" id="bc-live-cnt">—</span>
@@ -381,9 +381,13 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
   <nav class="rnav">
     <button class="rbtn on" data-r="all">🌏 전체</button>
     <button class="rbtn" data-r="seoul">🇰🇷 서울</button>
-    <button class="rbtn" data-r="shibuya">🗼 시부야</button>
     <button class="rbtn" data-r="tokyo">🏙️ 도쿄</button>
+    <button class="rbtn" data-r="shibuya">🗼 시부야</button>
     <button class="rbtn" data-r="hokkaido">⛄ 홋카이도</button>
+    <button class="rbtn" data-r="osaka">🏮 오사카</button>
+    <button class="rbtn" data-r="kyoto">⛩️ 교토</button>
+    <button class="rbtn" data-r="fuji">🗻 후지산</button>
+    <button class="rbtn" data-r="okinawa">🌊 오키나와</button>
   </nav>
   <main class="main" id="cctv-grid"></main>
 </div>
@@ -404,23 +408,38 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 var PROXY = 'https://cyh-proxy2.chldydgks.workers.dev';
 
 const CAMS = [
+  // 서울
   {id:'s1',r:'seoul',name:'한강 · 서울',loc:'서울',vid:'-JhoMGoAfFc',desc:'한강 실시간 4K'},
-  {id:'b1',r:'shibuya',name:'시부야 스크램블 크로싱',loc:'도쿄 시부야구',vid:'8H3nRCFVR6Y',desc:'スクランブル交差点 · 24h'},
-  {id:'b2',r:'shibuya',name:'시부야 크로싱 (앵글2)',loc:'도쿄 시부야구',vid:'tujkoXI8rWM',desc:'Shibuya Crossing · 다른 앵글'},
-  {id:'b3',r:'shibuya',name:'시부야 거리 뷰',loc:'도쿄 시부야구',vid:'f50R4vDlCmA',desc:'Tokyo Shibuya · 도심 거리'},
+  // 도쿄
   {id:'t1',r:'tokyo',name:'도쿄 스카이라인',loc:'도쿄',vid:'_k-5U7IeK8g',desc:'Tokyo Skyline · 파노라마'},
   {id:'t2',r:'tokyo',name:'신주쿠',loc:'도쿄 신주쿠구',vid:'6dp-bvQ7RWo',desc:'Shinjuku · 네온 도심'},
   {id:'t3',r:'tokyo',name:'가부키초',loc:'도쿄 신주쿠구',vid:'gFRtAAmiFbE',desc:'歌舞伎町 · 24h'},
-  {id:'t4',r:'tokyo',name:'도쿄타워 & 철도',loc:'도쿄 미나토구',vid:'EmXsW-g6Ni8',desc:'Tokyo Tower · 철도 뷰'},
-  {id:'t5',r:'tokyo',name:'센소지 · 아사쿠사',loc:'도쿄 다이토구',vid:'HjRZNBm1kms',desc:'浅草寺 · 가미나리몬'},
+  {id:'t4',r:'tokyo',name:'센소지 · 아사쿠사',loc:'도쿄 다이토구',vid:'HjRZNBm1kms',desc:'浅草寺 · 가미나리몬'},
+  // 시부야
+  {id:'b1',r:'shibuya',name:'시부야 스크램블 크로싱',loc:'도쿄 시부야구',vid:'8H3nRCFVR6Y',desc:'スクランブル交差点 · 24h'},
+  {id:'b3',r:'shibuya',name:'시부야 거리 뷰',loc:'도쿄 시부야구',vid:'f50R4vDlCmA',desc:'Tokyo Shibuya · 도심 거리'},
+  // 홋카이도
   {id:'h1',r:'hokkaido',name:'삿포로역',loc:'홋카이도 삿포로시',vid:'O7aL3u5n1gQ',desc:'JR 삿포로역 · 적설 · 날씨'},
   {id:'h2',r:'hokkaido',name:'홋카이도 라이브',loc:'홋카이도',vid:'kfIQBC0hrII',desc:'北海道 실시간 뷰'},
+  // 오사카
+  {id:'o1',r:'osaka',name:'도톤보리',loc:'오사카 주오구',vid:'Nbs_WkWTD7M',desc:'道頓堀 · 오사카 네온 명소'},
+  // 교토
+  {id:'k1',r:'kyoto',name:'교토 라이브',loc:'교토',vid:'wuC8wRvXock',desc:'京都 · 고도의 풍경'},
+  // 후지산
+  {id:'f1',r:'fuji',name:'후지산 · 오시노',loc:'야마나시현',vid:'Sv9hcJ3k5h4',desc:'富士山 · 24h 라이브'},
+  // 오키나와
+  {id:'ok1',r:'okinawa',name:'오키나와 해변',loc:'오키나와현',vid:'Zhfodg0io7M',desc:'沖縄 · 코발트블루 바다'},
 ];
+window._CAMS_COUNT = 13;
 const REGIONS=[
-  {id:'seoul',label:'🇰🇷 서울',sub:'Seoul, South Korea'},
-  {id:'shibuya',label:'🗼 시부야',sub:'Shibuya, Tokyo'},
-  {id:'tokyo',label:'🏙️ 도쿄',sub:'Tokyo, Japan'},
+  {id:'seoul',  label:'🇰🇷 서울',   sub:'Seoul, South Korea'},
+  {id:'tokyo',  label:'🏙️ 도쿄',   sub:'Tokyo, Japan'},
+  {id:'shibuya',label:'🗼 시부야',  sub:'Shibuya, Tokyo'},
   {id:'hokkaido',label:'⛄ 홋카이도',sub:'Hokkaido, Japan'},
+  {id:'osaka',  label:'🏮 오사카',  sub:'Osaka, Japan'},
+  {id:'kyoto',  label:'⛩️ 교토',   sub:'Kyoto, Japan'},
+  {id:'fuji',   label:'🗻 후지산',  sub:'Yamanashi, Japan'},
+  {id:'okinawa',label:'🌊 오키나와',sub:'Okinawa, Japan'},
 ];
 
 // ═══════════════════════════════════════════════════
