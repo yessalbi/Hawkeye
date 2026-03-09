@@ -302,6 +302,8 @@ footer { text-align:center; padding:20px; font-size:10px; color:var(--mut); font
 // ═══════════════════════════════════════════════════
 //  CCTV 데이터
 // ═══════════════════════════════════════════════════
+var PROXY = 'https://cyh-proxy.chldydgks.workers.dev';
+
 const CAMS = [
   {id:'s1',r:'seoul',name:'한강 · 서울',loc:'서울',vid:'-JhoMGoAfFc',desc:'한강 실시간 4K'},
   {id:'b1',r:'shibuya',name:'시부야 스크램블 크로싱',loc:'도쿄 시부야구',vid:'8H3nRCFVR6Y',desc:'スクランブル交差点 · 24h'},
@@ -564,7 +566,6 @@ function fmtNum(n){
 //  배포 후 아래 URL을 실제 Workers URL로 교체하세요
 //  예: https://cyh-proxy.your-id.workers.dev
 // ═══════════════════════════════════════════════════
-var PROXY = 'https://cyh-proxy.chldydgks.workers.dev';
 
 // ── SOOP 상태 조회 ──────────────────────────────
 async function fetchSoop(soopId) {
