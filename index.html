@@ -794,16 +794,13 @@ async function fetchSoop(soopId) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     console.log(`[SOOP] ${soopId}:`, JSON.stringify(json).slice(0, 200));
-    // station_status_plus 응답: { data: { is_live:1, broad_no, broad_title, current_sum_viewer } }
-    const d = json?.data ?? json?.DATA ?? null;
-    const isLive = d?.is_live === 1 || d?.is_live === '1';
-    if (isLive) {
-      const bno = d?.broad_no ?? null;
+    // chapi.sooplive.co.kr 응답: { broad: { broad_no, broad_title, current_sum_viewer } }
+    if (json?.isLive === true) {
       return {
         isLive: true,
-        thumb: bno ? `https://liveimg.sooplive.co.kr/m/${bno}` : null,
-        title: d?.broad_title ?? null,
-        viewers: d?.current_sum_viewer ? parseInt(d.current_sum_viewer) : null,
+        thumb: json.broad_img ?? null,
+        title: json.broad_title ?? null,
+        viewers: json.total_view_cnt ? parseInt(json.total_view_cnt) : null,
       };
     }
     return { isLive: false, thumb: null, title: null, viewers: null };
